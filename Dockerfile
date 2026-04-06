@@ -5,8 +5,8 @@ ARG USE_CUDA=false
 ARG USE_OLLAMA=false
 ARG USE_SLIM=false
 ARG USE_PERMISSION_HARDENING=false
-# Tested with cu117 for CUDA 11 and cu121 for CUDA 12 (default)
-ARG USE_CUDA_VER=cu128
+# Tested with cu117 for CUDA 11 and cu121 for CUDA 12
+ARG USE_CUDA_VER=cu132
 # any sentence transformer model; models to use can be found at https://huggingface.co/models?library=sentence-transformers
 # Leaderboard: https://huggingface.co/spaces/mteb/leaderboard 
 # for better performance and multilangauge support use "intfloat/multilingual-e5-large" (~2.5GB) or "intfloat/multilingual-e5-base" (~1.5GB)
@@ -133,24 +133,48 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # install python dependencies
-COPY --chown=$UID:$GID ./backend/requirements.txt ./requirements.txt
+COPY --chown=$UID:$GID ./backend/requirements_permissive.txt ./requirements.txt
 
 RUN set -e; \
     pip3 install --no-cache-dir uv; \
+    sed -i '/ @ file:\/\//d' requirements.txt; \
+    sed -i '/^Brlapi[<=>]/d' requirements.txt; \
+    sed -i '/^python-debian[<=>]/d' requirements.txt; \
+    sed -i '/^defer[<=>]/d' requirements.txt; \
+    sed -i '/^librmm-cu[0-9]/d' requirements.txt; \
+    sed -i '/^nvidia-/d' requirements.txt; \
+    sed -i '/^cuda-bindings[<=>]/d' requirements.txt; \
+    sed -i '/^cuda-pathfinder[<=>]/d' requirements.txt; \
+    sed -i '/^cuda-python[<=>]/d' requirements.txt; \
+    sed -i '/^cuda-toolkit[<=>]/d' requirements.txt; \
+    sed -i '/^pycairo[<=>]/d' requirements.txt; \
+    sed -i '/^rlPyCairo[<=>]/d' requirements.txt; \
+    sed -i '/^PyGObject[<=>]/d' requirements.txt; \
     if [ "$USE_CUDA" = "true" ]; then \
     # If you use CUDA the whisper and embedding model will be downloaded on first use
-    # fix: pin torch<=2.9.1 - torch 2.10.0 aarch64 wheels cause SIGILL on ARM devices (RPi 4 Cortex-A72) #21349
-    pip3 install 'torch<=2.9.1' torchvision torchaudio --index-url https://download.pytorch.org/whl/$USE_CUDA_DOCKER_VER --no-cache-dir; \
+    ARCH="$(uname -m)"; \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
+    echo "CUDA torch wheels are unavailable for $ARCH in this build path; using CPU torch wheels"; \
+    pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir; \
+    elif ! pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/$USE_CUDA_DOCKER_VER --no-cache-dir; then \
+    echo "No compatible torch wheels found for $USE_CUDA_DOCKER_VER; falling back to cu132 nightly index"; \
+    if ! pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu132 --no-cache-dir; then \
+    echo "No compatible cu132 wheels found; falling back to CPU torch wheels"; \
+    pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir; \
+    fi; \
+    fi; \
     uv pip install --system -r requirements.txt --no-cache-dir; \
+    uv pip install --system sentence-transformers faster-whisper tiktoken nltk --no-cache-dir; \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['RAG_EMBEDDING_MODEL'], device='cpu')"; \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ.get('AUXILIARY_EMBEDDING_MODEL', 'TaylorAI/bge-micro-v2'), device='cpu')"; \
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])"; \
     python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])"; \
     python -c "import nltk; nltk.download('punkt_tab')"; \
     else \
-    pip3 install 'torch<=2.9.1' torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir; \
+    pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir; \
     uv pip install --system -r requirements.txt --no-cache-dir; \
     if [ "$USE_SLIM" != "true" ]; then \
+    uv pip install --system sentence-transformers faster-whisper tiktoken nltk --no-cache-dir; \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['RAG_EMBEDDING_MODEL'], device='cpu')"; \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ.get('AUXILIARY_EMBEDDING_MODEL', 'TaylorAI/bge-micro-v2'), device='cpu')"; \
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])"; \

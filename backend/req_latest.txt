@@ -43,7 +43,6 @@ loguru
 mdurl
 msoffcrypto-tool
 mypy_extensions
-open-webui
 opencv-python-headless
 opensearch-py
 peewee-migrate
