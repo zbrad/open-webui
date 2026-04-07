@@ -158,6 +158,7 @@
 
 			if (version !== null) {
 				WEBUI_VERSION.set(version);
+				window.WEBUI_VERSION = version;
 			}
 
 			console.log('version', version);
@@ -707,6 +708,10 @@
 		}
 		if (event.type === 'page:navigate' && event.data?.path) {
 			await goto(event.data.path);
+			return;
+		}
+		if (event.type === 'query' && event.data?.query) {
+			await goto(`/?q=${encodeURIComponent(event.data.query)}`);
 			return;
 		}
 		if (event.type === 'models:refresh') {
