@@ -712,7 +712,12 @@
 			return;
 		}
 		if (event.type === 'query' && (event.data?.query || event.data?.files?.length)) {
-			desktopEvent.set({ query: event.data.query, files: event.data.files });
+			desktopEvent.set(event);
+			await goto('/');
+			return;
+		}
+		if (event.type === 'call') {
+			desktopEvent.set(event);
 			await goto('/');
 			return;
 		}
