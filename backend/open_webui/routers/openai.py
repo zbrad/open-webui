@@ -1211,7 +1211,7 @@ async def generate_chat_completion(
                 except json.JSONDecodeError:
                     return JSONResponse(
                         status_code=r.status,
-                        content={"error": {"message": error_body, "code": r.status}},
+                        content={'error': {'message': error_body, 'code': r.status}},
                     )
 
             streaming = True
