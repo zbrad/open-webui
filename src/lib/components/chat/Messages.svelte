@@ -57,7 +57,7 @@
 
 	export let onSelect = (e) => {};
 
-	export let messagesCount: number | null = 10;
+	export let messagesCount: number | null = 8;
 	let messagesLoading = false;
 
 	// Off-screen message unloading. Heights are measured on scroll so spacers
@@ -160,7 +160,7 @@
 		element.scrollTop = element.scrollTop + 100;
 
 		messagesLoading = true;
-		messagesCount += 10;
+		messagesCount += 8;
 
 		buildMessages();
 
