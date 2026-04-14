@@ -1020,6 +1020,8 @@ class ChatMessage(BaseModel):
     tool_calls: Optional[list[dict]] = None
     images: Optional[list[str]] = None
 
+    model_config = ConfigDict(extra='allow')
+
     @validator('content', pre=True)
     @classmethod
     def check_at_least_one_field(cls, field_value, values, **kwargs):
