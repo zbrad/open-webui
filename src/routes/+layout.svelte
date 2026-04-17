@@ -51,7 +51,7 @@
 	import 'tippy.js/dist/tippy.css';
 
 	import { executeToolServer, getBackendConfig, getModels, getVersion } from '$lib/apis';
-	import { getSessionUser, userSignOut } from '$lib/apis/auths';
+	import { getSessionUser, updateUserTimezone, userSignOut } from '$lib/apis/auths';
 	import { getAllTags, getChatList } from '$lib/apis/chats';
 	import { chatCompletion } from '$lib/apis/openai';
 	import {
@@ -62,7 +62,7 @@
 	} from '$lib/utils/connections';
 
 	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL, WEBUI_HOSTNAME } from '$lib/constants';
-	import { bestMatchingLanguage, displayFileHandler } from '$lib/utils';
+	import { bestMatchingLanguage, displayFileHandler, getUserTimezone } from '$lib/utils';
 	import { setTextScale } from '$lib/utils/text-scale';
 
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
@@ -987,6 +987,12 @@
 							await config.set(await getBackendConfig());
 						} catch (error) {
 							console.error('Error refreshing backend config:', error);
+						}
+
+						// Keep user timezone in sync on every app load/refresh
+						const timezone = getUserTimezone();
+						if (timezone) {
+							updateUserTimezone(localStorage.token, timezone);
 						}
 
 						// Relay auth token to desktop app for API access
