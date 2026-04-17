@@ -1723,7 +1723,11 @@ const cleanupMermaidTempElements = (id: string) => {
 	document.getElementById(`i${id}`)?.remove();
 };
 
-export const renderMermaidDiagram = async (mermaid: typeof import('mermaid').default, code: string, renderId?: string) => {
+export const renderMermaidDiagram = async (
+	mermaid: typeof import('mermaid').default,
+	code: string,
+	renderId?: string
+) => {
 	const id = renderId ?? `mermaid-${uuidv4()}`;
 	try {
 		const parseResult = await mermaid.parse(code, { suppressErrors: false });
