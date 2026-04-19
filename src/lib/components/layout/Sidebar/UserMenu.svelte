@@ -214,7 +214,7 @@
 				<div class=" self-center truncate">{$i18n.t('Settings')}</div>
 			</button>
 
-			{#if $user?.role === 'admin' || $user?.permissions?.features?.automations}
+			{#if $config?.features?.enable_automations && ($user?.role === 'admin' || $user?.permissions?.features?.automations)}
 				<a
 					href="/automations"
 					draggable="false"
