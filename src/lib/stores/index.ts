@@ -230,6 +230,7 @@ type Settings = {
 	ctrlEnterToSend?: boolean;
 	renderMarkdownInPreviews?: boolean;
 	recentEmojis?: string[];
+	pinnedMenuItems?: string[];
 
 	system?: string;
 	seed?: number;
