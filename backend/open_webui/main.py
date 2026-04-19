@@ -105,6 +105,7 @@ from open_webui.routers import (
     scim,
     terminals,
     automations,
+    calendar,
 )
 
 from open_webui.routers.retrieval import (
@@ -395,6 +396,7 @@ from open_webui.config import (
     AUTOMATION_MAX_COUNT,
     AUTOMATION_MIN_INTERVAL,
     ENABLE_CHANNELS,
+    ENABLE_CALENDAR,
     ENABLE_NOTES,
     ENABLE_USER_STATUS,
     ENABLE_COMMUNITY_SHARING,
@@ -901,6 +903,7 @@ app.state.config.FOLDER_MAX_FILE_COUNT = FOLDER_MAX_FILE_COUNT
 app.state.config.AUTOMATION_MAX_COUNT = AUTOMATION_MAX_COUNT
 app.state.config.AUTOMATION_MIN_INTERVAL = AUTOMATION_MIN_INTERVAL
 app.state.config.ENABLE_CHANNELS = ENABLE_CHANNELS
+app.state.config.ENABLE_CALENDAR = ENABLE_CALENDAR
 app.state.config.ENABLE_NOTES = ENABLE_NOTES
 app.state.config.ENABLE_COMMUNITY_SHARING = ENABLE_COMMUNITY_SHARING
 app.state.config.ENABLE_MESSAGE_RATING = ENABLE_MESSAGE_RATING
@@ -1433,6 +1436,7 @@ if ENABLE_ADMIN_ANALYTICS:
 app.include_router(utils.router, prefix='/api/v1/utils', tags=['utils'])
 app.include_router(terminals.router, prefix='/api/v1/terminals', tags=['terminals'])
 app.include_router(automations.router, prefix='/api/v1/automations', tags=['automations'])
+app.include_router(calendar.router, prefix='/api/v1/calendars', tags=['calendars'])
 
 # SCIM 2.0 API for identity management
 if ENABLE_SCIM:
@@ -2216,6 +2220,7 @@ async def get_app_config(request: Request):
                     'enable_folders': app.state.config.ENABLE_FOLDERS,
                     'folder_max_file_count': app.state.config.FOLDER_MAX_FILE_COUNT,
                     'enable_channels': app.state.config.ENABLE_CHANNELS,
+                    'enable_calendar': app.state.config.ENABLE_CALENDAR,
                     'enable_notes': app.state.config.ENABLE_NOTES,
                     'enable_web_search': app.state.config.ENABLE_WEB_SEARCH,
                     'enable_code_execution': app.state.config.ENABLE_CODE_EXECUTION,
