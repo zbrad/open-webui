@@ -250,7 +250,7 @@
 				</a>
 			{/if}
 
-			{#if $user?.role === 'admin' || $user?.permissions?.features?.calendar}
+			{#if $config?.features?.enable_calendar && ($user?.role === 'admin' || $user?.permissions?.features?.calendar)}
 				<a
 					href="/calendar"
 					draggable="false"
