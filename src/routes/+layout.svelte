@@ -19,6 +19,7 @@
 		WEBUI_DEPLOYMENT_ID,
 		mobile,
 		socket,
+		socketConnected,
 		chatId,
 		chats,
 		currentChatPage,
@@ -127,8 +128,17 @@
 			console.log('connect_error', err);
 		});
 
+		let hasConnectedOnce = false;
+
 		_socket.on('connect', async () => {
 			console.log('connected', _socket.id);
+
+			if (hasConnectedOnce) {
+				socketConnected.set(true);
+				toast.success($i18n.t('Reconnected'));
+			}
+			hasConnectedOnce = true;
+
 			const res = await getVersion(localStorage.token);
 
 			const deploymentId = res?.deployment_id ?? null;
@@ -182,6 +192,8 @@
 
 		_socket.on('disconnect', (reason, details) => {
 			console.log(`Socket ${_socket.id} disconnected due to ${reason}`);
+			socketConnected.set(false);
+			toast.warning($i18n.t('Connection lost. Reconnecting...'));
 
 			if (heartbeatInterval) {
 				clearInterval(heartbeatInterval);
