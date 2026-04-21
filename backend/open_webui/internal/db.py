@@ -56,10 +56,7 @@ def extract_ssl_mode_from_url(url: str) -> tuple[str, str | None]:
 
     Non-PostgreSQL URLs are returned unchanged with ``ssl_mode=None``.
     """
-    if not url or not any(
-        url.startswith(prefix)
-        for prefix in ('postgresql://', 'postgresql+', 'postgres://')
-    ):
+    if not url or not any(url.startswith(prefix) for prefix in ('postgresql://', 'postgresql+', 'postgres://')):
         return url, None
 
     parsed = urlparse(url)
@@ -126,7 +123,6 @@ def reattach_ssl_mode_to_url(url_without_ssl: str, ssl_mode: str | None) -> str:
     return f'{url_without_ssl}{separator}sslmode={ssl_mode}'
 
 
-
 class JSONField(types.TypeDecorator):
     impl = types.Text
     cache_ok = True
@@ -188,7 +184,9 @@ if ENABLE_DB_MIGRATIONS:
 DATABASE_URL_WITHOUT_SSL, DATABASE_SSL_MODE = extract_ssl_mode_from_url(DATABASE_URL)
 
 # For psycopg2 (sync engine), re-append sslmode=<value>.
-SQLALCHEMY_DATABASE_URL = reattach_ssl_mode_to_url(DATABASE_URL_WITHOUT_SSL, DATABASE_SSL_MODE) if DATABASE_SSL_MODE else DATABASE_URL
+SQLALCHEMY_DATABASE_URL = (
+    reattach_ssl_mode_to_url(DATABASE_URL_WITHOUT_SSL, DATABASE_SSL_MODE) if DATABASE_SSL_MODE else DATABASE_URL
+)
 
 
 def _make_async_url(url: str) -> str:
@@ -332,15 +330,13 @@ get_db = contextmanager(get_session)
 # ============================================================
 
 # Use the SSL-stripped URL for asyncpg — SSL is injected via connect_args.
-ASYNC_SQLALCHEMY_DATABASE_URL = _make_async_url(DATABASE_URL_WITHOUT_SSL if DATABASE_SSL_MODE else SQLALCHEMY_DATABASE_URL)
+ASYNC_SQLALCHEMY_DATABASE_URL = _make_async_url(
+    DATABASE_URL_WITHOUT_SSL if DATABASE_SSL_MODE else SQLALCHEMY_DATABASE_URL
+)
 
 if 'sqlite' in ASYNC_SQLALCHEMY_DATABASE_URL:
     # Generous default — async coroutines + no session sharing = high connection demand.
-    _sqlite_pool_size = (
-        DATABASE_POOL_SIZE
-        if isinstance(DATABASE_POOL_SIZE, int) and DATABASE_POOL_SIZE > 0
-        else 512
-    )
+    _sqlite_pool_size = DATABASE_POOL_SIZE if isinstance(DATABASE_POOL_SIZE, int) and DATABASE_POOL_SIZE > 0 else 512
     async_engine = create_async_engine(
         ASYNC_SQLALCHEMY_DATABASE_URL,
         connect_args={'check_same_thread': False},

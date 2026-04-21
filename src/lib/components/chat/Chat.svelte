@@ -757,10 +757,7 @@
 
 		const selectedFolderSubscribe = selectedFolder.subscribe(async (folder) => {
 			await tick();
-			if (
-				folder?.data?.model_ids &&
-				!equal(selectedModels, folder.data.model_ids)
-			) {
+			if (folder?.data?.model_ids && !equal(selectedModels, folder.data.model_ids)) {
 				selectedModels = folder.data.model_ids;
 
 				console.log('Set selectedModels from folder data:', selectedModels);
@@ -1836,8 +1833,7 @@
 		);
 		chatFiles = chatFiles.filter(
 			// Remove duplicates
-			(item, index, array) =>
-				array.findIndex((i) => equal(i, item)) === index
+			(item, index, array) => array.findIndex((i) => equal(i, item)) === index
 		);
 
 		// Create user message
@@ -2176,10 +2172,7 @@
 			)
 		);
 		// Remove duplicates
-		files = files.filter(
-			(item, index, array) =>
-				array.findIndex((i) => equal(i, item)) === index
-		);
+		files = files.filter((item, index, array) => array.findIndex((i) => equal(i, item)) === index);
 
 		scrollToBottom();
 		eventTarget.dispatchEvent(
