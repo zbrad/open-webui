@@ -138,18 +138,25 @@ async def get_models(
         db=db,
     )
 
-    return ModelAccessListResponse(
-        items=[
+    # Strip profile_image_url from meta — images are served via /model/profile/image.
+    items = []
+    for model in result.items:
+        data = model.model_dump()
+        if data.get('meta'):
+            data['meta'].pop('profile_image_url', None)
+        items.append(
             ModelAccessResponse(
-                **model.model_dump(),
+                **data,
                 write_access=(
                     (user.role == 'admin' and BYPASS_ADMIN_ACCESS_CONTROL)
                     or user.id == model.user_id
                     or model.id in writable_model_ids
                 ),
             )
-            for model in result.items
-        ],
+        )
+
+    return ModelAccessListResponse(
+        items=items,
         total=result.total,
     )
 
@@ -171,25 +178,12 @@ async def get_base_models(user=Depends(get_admin_user), db: AsyncSession = Depen
 
 @router.get('/tags', response_model=list[str])
 async def get_model_tags(user=Depends(get_verified_user), db: AsyncSession = Depends(get_async_session)):
-    if user.role == 'admin' and BYPASS_ADMIN_ACCESS_CONTROL:
-        models = await Models.get_models(db=db)
-    else:
-        models = await Models.get_models_by_user_id(user.id, db=db)
-
-    tags_set = set()
-    for model in models:
-        if model.meta:
-            meta = model.meta.model_dump()
-            for tag in meta.get('tags', []):
-                try:
-                    name = tag.get('name') if isinstance(tag, dict) else str(tag)
-                    if name:
-                        tags_set.add(name)
-                except Exception:
-                    continue
-
-    tags = sorted(tags_set)
-    return tags
+    tags = await Models.get_all_tags(
+        user_id=user.id,
+        is_admin=(user.role == 'admin' and BYPASS_ADMIN_ACCESS_CONTROL),
+        db=db,
+    )
+    return sorted(tags)
 
 
 ############################
@@ -466,54 +460,48 @@ async def get_model_profile_image(
     user=Depends(get_verified_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    model = await Models.get_model_by_id(id, db=db)
+    model_meta = await Models.get_model_meta_by_id(id, db=db)
 
-    if model:
-        etag = f'"{model.updated_at}"' if model.updated_at else None
+    if model_meta:
+        meta, updated_at = model_meta
+        profile_image_url = (meta or {}).get('profile_image_url')
 
-        if model.meta.profile_image_url:
-            if model.meta.profile_image_url.startswith('http'):
+        if profile_image_url:
+            if profile_image_url.startswith('http'):
                 return Response(
                     status_code=status.HTTP_302_FOUND,
-                    headers={'Location': model.meta.profile_image_url},
+                    headers={'Location': profile_image_url},
                 )
-            elif model.meta.profile_image_url.startswith('data:image'):
+            elif profile_image_url.startswith('data:image'):
                 try:
-                    header, base64_data = model.meta.profile_image_url.split(',', 1)
+                    header, base64_data = profile_image_url.split(',', 1)
                     image_data = base64.b64decode(base64_data)
                     image_buffer = io.BytesIO(image_data)
                     media_type = header.split(';')[0].lstrip('data:')
 
                     headers = {'Content-Disposition': 'inline'}
-                    if etag:
-                        headers['ETag'] = etag
+                    if updated_at:
+                        headers['ETag'] = f'"{updated_at}"'
 
                     return StreamingResponse(
                         image_buffer,
                         media_type=media_type,
                         headers=headers,
                     )
-                except Exception as e:
+                except Exception:
                     pass
             else:
-                safe_static = _safe_static_redirect_path(model.meta.profile_image_url)
+                safe_static = _safe_static_redirect_path(profile_image_url)
                 if safe_static:
                     return RedirectResponse(
                         url=safe_static,
                         status_code=status.HTTP_302_FOUND,
                     )
 
-        # Canonical URL so browsers cache one asset for all default model avatars
-        # (distinct /profile/image?id=... URLs would otherwise re-download the same bytes).
-        return RedirectResponse(
-            url='/static/favicon.png',
-            status_code=status.HTTP_302_FOUND,
-        )
-    else:
-        return RedirectResponse(
-            url='/static/favicon.png',
-            status_code=status.HTTP_302_FOUND,
-        )
+    return RedirectResponse(
+        url='/static/favicon.png',
+        status_code=status.HTTP_302_FOUND,
+    )
 
 
 ############################
