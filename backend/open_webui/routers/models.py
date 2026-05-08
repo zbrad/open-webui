@@ -28,8 +28,8 @@ from fastapi import (
     Depends,
     HTTPException,
     Request,
-    status,
     Response,
+    status,
 )
 from fastapi.responses import RedirectResponse, StreamingResponse
 
@@ -37,6 +37,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.access_control import has_permission, filter_allowed_access_grants
 from open_webui.config import BYPASS_ADMIN_ACCESS_CONTROL
+from open_webui.env import ENABLE_PROFILE_IMAGE_URL_FORWARDING
 from open_webui.internal.db import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -484,10 +485,14 @@ async def get_model_profile_image(
 
     if profile_image_url:
         if profile_image_url.startswith('http'):
-            return Response(
-                status_code=status.HTTP_302_FOUND,
-                headers={'Location': profile_image_url},
-            )
+            if ENABLE_PROFILE_IMAGE_URL_FORWARDING:
+                return Response(
+                    status_code=status.HTTP_302_FOUND,
+                    headers={'Location': profile_image_url},
+                )
+            # When forwarding is disabled, fall through to the
+            # default image to prevent client-side IP/UA/Referer
+            # leaks via 302 redirect to external origins.
         elif profile_image_url.startswith('data:image'):
             try:
                 header, base64_data = profile_image_url.split(',', 1)
