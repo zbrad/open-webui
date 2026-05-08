@@ -291,7 +291,7 @@
 		oldSelectedModelIds = structuredClone(selectedModelIds);
 	};
 
-	const resetInput = () => {
+	const resetInput = async () => {
 		selectedToolIds = [];
 		selectedFilterIds = [];
 		pendingOAuthTools = [];
@@ -300,7 +300,7 @@
 		codeInterpreterEnabled = false;
 
 		if (selectedModelIds.filter((id) => id).length > 0) {
-			setDefaults();
+			await setDefaults();
 		}
 	};
 
@@ -1194,7 +1194,7 @@
 
 		autoScroll = true;
 
-		resetInput();
+		await resetInput();
 		await chatId.set('');
 		await chatTitle.set('');
 
@@ -2216,7 +2216,6 @@
 				? { role: 'system', content: `${params?.system ?? $settings?.system ?? ''}` }
 				: undefined
 		].filter(Boolean);
-
 
 		if ($temporaryChatEnabled) {
 			messages = [
