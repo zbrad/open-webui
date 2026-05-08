@@ -45,6 +45,7 @@
 	export let initNewChat: Function;
 	export let shareEnabled: boolean = false;
 	export let scrollTop = 0;
+	export let scrollToTop: (() => void) | null = null;
 
 	export let chat;
 	export let history;
@@ -194,6 +195,7 @@
 						<Menu
 							{chat}
 							{shareEnabled}
+							{scrollToTop}
 							shareHandler={() => {
 								showShareChatModal = !showShareChatModal;
 							}}

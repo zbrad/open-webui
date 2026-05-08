@@ -2263,6 +2263,9 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     form_data = apply_params_to_form_data(form_data, model)
     log.debug(f'form_data: {form_data}')
 
+    # Guided regeneration: extract before it reaches the LLM provider
+    regeneration_prompt = form_data.pop('regeneration_prompt', None)
+
     # Load messages from DB when available — DB preserves structured 'output' items
     # which the frontend strips, causing tool calls to be merged into content.
     chat_id = metadata.get('chat_id')
@@ -2297,6 +2300,9 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                         ]
                 # Strip files field — it's been incorporated into content
                 message.pop('files', None)
+
+    if regeneration_prompt:
+        form_data['messages'].append({'role': 'user', 'content': regeneration_prompt})
 
     # Process messages with OR-aligned output items for clean LLM messages
     form_data['messages'] = process_messages_with_output(form_data.get('messages', []))
@@ -4875,6 +4881,11 @@ async def streaming_chat_response_handler(response, ctx):
                                     ci_output = {'stdout': 'Code interpreter engine not configured.'}
 
                                 log.debug(f'Code interpreter output: {ci_output}')
+
+                                # Handle error responses from event_caller
+                                # (e.g. session disconnected, timeout)
+                                if isinstance(ci_output, dict) and ci_output.get('error'):
+                                    ci_output = {'stderr': ci_output['error']}
 
                                 if isinstance(ci_output, dict):
                                     stdout = ci_output.get('stdout', '')

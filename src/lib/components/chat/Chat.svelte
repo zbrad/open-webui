@@ -121,8 +121,10 @@
 	let controlPaneComponent: ChatControls | undefined;
 
 	let messageInput: MessageInput | undefined;
+	let messagesRef: Messages | undefined;
 
 	let autoScroll = true;
+	let isNearTop = true;
 	let processing = '';
 	let messagesContainerElement: HTMLDivElement;
 
@@ -1413,6 +1415,10 @@
 		}
 	};
 
+	const scrollToTop = async () => {
+		await messagesRef?.scrollToTop();
+	};
+
 	let scrollRAF = null;
 	let contentsRAF = null;
 	const scheduleScrollToBottom = () => {
@@ -1969,11 +1975,13 @@
 		{
 			messages = null,
 			modelId = null,
-			modelIdx = null
+			modelIdx = null,
+			regenerationPrompt = null
 		}: {
 			messages?: any[] | null;
 			modelId?: string | null;
 			modelIdx?: number | null;
+			regenerationPrompt?: string | null;
 		} = {}
 	) => {
 		if (autoScroll) {
@@ -2085,7 +2093,8 @@
 				_history,
 				primaryResponseMessageId,
 				_chatId,
-				selectedModelIds.length > 1 ? messageIdsMap : undefined
+				selectedModelIds.length > 1 ? messageIdsMap : undefined,
+				regenerationPrompt
 			);
 
 			if (chatEventEmitter) clearInterval(chatEventEmitter);
@@ -2150,7 +2159,8 @@
 		_history,
 		responseMessageId,
 		_chatId,
-		messageIdsMap?: Record<string, string>
+		messageIdsMap?: Record<string, string>,
+		regenerationPrompt?: string | null
 	) => {
 		const responseMessage = _history.messages[responseMessageId];
 		const userMessage = _history.messages[responseMessage.parentId];
@@ -2206,6 +2216,8 @@
 				? { role: 'system', content: `${params?.system ?? $settings?.system ?? ''}` }
 				: undefined
 		].filter(Boolean);
+
+
 		if ($temporaryChatEnabled) {
 			messages = [
 				...messages,
@@ -2349,6 +2361,7 @@
 				...(messageIdsMap ? { message_ids: messageIdsMap } : {}),
 				parent_id: userMessage?.parentId ?? null,
 				user_message: userMessage,
+				...(regenerationPrompt ? { regeneration_prompt: regenerationPrompt } : {}),
 
 				background_tasks: {
 					...(!$temporaryChatEnabled && !_chatId && (userMessage?.parentId ?? null) === null
@@ -2580,13 +2593,8 @@
 			await sendMessage(history, userMessage.id, {
 				...(suggestionPrompt
 					? {
-							messages: [
-								...createMessagesList(history, message.id),
-								{
-									role: 'user',
-									content: suggestionPrompt
-								}
-							]
+							messages: createMessagesList(history, message.id),
+							regenerationPrompt: suggestionPrompt
 						}
 					: {}),
 				...((userMessage?.models ?? [...selectedModels]).length > 1
@@ -2916,6 +2924,7 @@
 						bind:selectedModels
 						shareEnabled={!!history.currentId}
 						{initNewChat}
+						scrollToTop={!isNearTop ? scrollToTop : null}
 						{archiveChatHandler}
 						{deleteChatHandler}
 						{moveChatHandler}
@@ -2968,10 +2977,12 @@
 									autoScroll =
 										messagesContainerElement.scrollHeight - messagesContainerElement.scrollTop <=
 										messagesContainerElement.clientHeight + 5;
+									isNearTop = messagesContainerElement.scrollTop <= 100;
 								}}
 							>
 								<div class=" h-full w-full flex flex-col">
 									<Messages
+										bind:this={messagesRef}
 										chatId={$chatId}
 										bind:history
 										bind:autoScroll
