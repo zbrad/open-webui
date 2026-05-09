@@ -312,6 +312,14 @@
 		}
 	};
 
+	/** Check whether a terminal ID references an available system or direct terminal. */
+	const isTerminalAvailable = (tid: string): boolean => {
+		return (
+			($terminalServers ?? []).some((t) => t.id && t.id === tid) ||
+			($settings?.terminalServers ?? []).some((s) => s.url === tid)
+		);
+	};
+
 	const setDefaults = async () => {
 		if (!$tools) {
 			tools.set(await getTools(localStorage.token));
@@ -390,9 +398,12 @@
 				}
 			}
 
-			// Set Default Terminal
+			// Set Default Terminal — only if the referenced terminal actually exists
 			if (model?.info?.meta?.terminalId) {
-				selectedTerminalId.set(model.info.meta.terminalId);
+				const tid = model.info.meta.terminalId;
+				if (isTerminalAvailable(tid)) {
+					selectedTerminalId.set(tid);
+				}
 			}
 		}
 	};
@@ -728,6 +739,11 @@
 					enabled: $selectedTerminalId !== null && s.url === $selectedTerminalId
 				}))
 			});
+		}
+
+		// Clear stale selectedTerminalId if the referenced terminal no longer exists
+		if ($selectedTerminalId && !isTerminalAvailable($selectedTerminalId)) {
+			selectedTerminalId.set(null);
 		}
 
 		const pageSubscribe = page.subscribe(async (p) => {
