@@ -2274,6 +2274,16 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     if chat_id and user_message_id and not chat_id.startswith('local:'):
         db_messages = await load_messages_from_db(chat_id, user_message_id)
         if db_messages:
+            # Continue: frontend sends assistant_message_id when continuing
+            # an existing response. Load its content so the LLM sees prior output.
+            assistant_message_id = metadata.get('assistant_message_id')
+            if assistant_message_id:
+                assistant_message = await Chats.get_message_by_id_and_message_id(chat_id, assistant_message_id)
+                if assistant_message and (assistant_message.get('content') or assistant_message.get('output')):
+                    db_messages.append(
+                        {k: v for k, v in assistant_message.items() if k in ('role', 'content', 'output', 'files')}
+                    )
+
             system_message = get_system_message(form_data.get('messages', []))
             form_data['messages'] = [system_message, *db_messages] if system_message else db_messages
 
@@ -3014,7 +3024,6 @@ async def background_tasks_handler(ctx):
     metadata = ctx['metadata']
     tasks = ctx['tasks']
     event_emitter = ctx['event_emitter']
-
 
     message = None
     messages = []
@@ -4076,9 +4085,9 @@ async def streaming_chat_response_handler(response, ctx):
                                                         current_response_tool_call['function']['name'] = delta_name
 
                                                     if delta_arguments:
-                                                        current_response_tool_call['function']['arguments'] += (
-                                                            delta_arguments
-                                                        )
+                                                        current_response_tool_call['function'][
+                                                            'arguments'
+                                                        ] += delta_arguments
 
                                         # Emit pending tool calls in real-time
                                         if response_tool_calls:
@@ -4832,8 +4841,7 @@ async def streaming_chat_response_handler(response, ctx):
                                 code = sanitize_code(code)
 
                                 if CODE_INTERPRETER_BLOCKED_MODULES:
-                                    blocking_code = textwrap.dedent(
-                                        f"""
+                                    blocking_code = textwrap.dedent(f"""
                                         import builtins
     
                                         BLOCKED_MODULES = {CODE_INTERPRETER_BLOCKED_MODULES}
@@ -4849,8 +4857,7 @@ async def streaming_chat_response_handler(response, ctx):
                                             return _real_import(name, globals, locals, fromlist, level)
     
                                         builtins.__import__ = restricted_import
-                                    """
-                                    )
+                                    """)
                                     code = blocking_code + '\n' + code
 
                                 if request.app.state.config.CODE_INTERPRETER_ENGINE == 'pyodide':

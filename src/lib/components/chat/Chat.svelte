@@ -2128,8 +2128,10 @@
 				_history,
 				primaryResponseMessageId,
 				_chatId,
-				selectedModelIds.length > 1 ? messageIdsMap : undefined,
-				regenerationPrompt
+				{
+					messageIdsMap: selectedModelIds.length > 1 ? messageIdsMap : undefined,
+					regenerationPrompt
+				}
 			);
 
 			if (chatEventEmitter) clearInterval(chatEventEmitter);
@@ -2194,8 +2196,15 @@
 		_history,
 		responseMessageId,
 		_chatId,
-		messageIdsMap?: Record<string, string>,
-		regenerationPrompt?: string | null
+		{
+			messageIdsMap,
+			regenerationPrompt,
+			continueResponse = false
+		}: {
+			messageIdsMap?: Record<string, string>;
+			regenerationPrompt?: string | null;
+			continueResponse?: boolean;
+		} = {}
 	) => {
 		const responseMessage = _history.messages[responseMessageId];
 		const userMessage = _history.messages[responseMessage.parentId];
@@ -2396,6 +2405,7 @@
 				parent_id: userMessage?.parentId ?? null,
 				user_message: userMessage,
 				...(regenerationPrompt ? { regeneration_prompt: regenerationPrompt } : {}),
+				...(continueResponse ? { assistant_message_id: responseMessageId } : {}),
 
 				background_tasks: {
 					...(!$temporaryChatEnabled && !_chatId && (userMessage?.parentId ?? null) === null
@@ -2655,7 +2665,8 @@
 					createMessagesList(history, responseMessage.id),
 					history,
 					responseMessage.id,
-					_chatId
+					_chatId,
+					{ continueResponse: true }
 				);
 			}
 		}
