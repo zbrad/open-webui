@@ -1697,6 +1697,8 @@
 	"Remove Model": "",
 	"Rename": "",
 	"Renamed to {{name}}": "",
+	"Render Markdown in Assistant Messages": "",
+	"Render Markdown in User Messages": "",
 	"Render Markdown in Previews": "",
 	"Reorder Models": "",
 	"Repeats": "",
