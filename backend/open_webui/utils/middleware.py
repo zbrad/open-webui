@@ -3058,7 +3058,11 @@ async def background_tasks_handler(ctx):
     message = None
     messages = []
 
-    if 'chat_id' in metadata and not metadata['chat_id'].startswith('local:') and not metadata['chat_id'].startswith('channel:'):
+    if (
+        'chat_id' in metadata
+        and not metadata['chat_id'].startswith('local:')
+        and not metadata['chat_id'].startswith('channel:')
+    ):
         messages_map = await Chats.get_messages_map_by_chat_id(metadata['chat_id'])
         message = messages_map.get(metadata['message_id']) if messages_map else None
 
@@ -3138,7 +3142,9 @@ async def background_tasks_handler(ctx):
                             }
                         )
 
-                        if not metadata.get('chat_id', '').startswith('local:') and not metadata.get('chat_id', '').startswith('channel:'):
+                        if not metadata.get('chat_id', '').startswith('local:') and not metadata.get(
+                            'chat_id', ''
+                        ).startswith('channel:'):
                             await Chats.upsert_message_to_chat_by_id_and_message_id(
                                 metadata['chat_id'],
                                 metadata['message_id'],
@@ -3150,7 +3156,9 @@ async def background_tasks_handler(ctx):
                     except Exception as e:
                         pass
 
-            if not metadata.get('chat_id', '').startswith('local:') and not metadata.get('chat_id', '').startswith('channel:'):  # Only update titles and tags for non-temp chats
+            if not metadata.get('chat_id', '').startswith('local:') and not metadata.get('chat_id', '').startswith(
+                'channel:'
+            ):  # Only update titles and tags for non-temp chats
                 if TASKS.TITLE_GENERATION in tasks:
                     user_message = get_last_user_message(messages)
                     if user_message and len(user_message) > 100:
@@ -3453,7 +3461,11 @@ async def non_streaming_chat_response_handler(response, ctx):
                         }
                     )
 
-                    title = await Chats.get_chat_title_by_id(metadata['chat_id']) if not metadata['chat_id'].startswith('channel:') else ''
+                    title = (
+                        await Chats.get_chat_title_by_id(metadata['chat_id'])
+                        if not metadata['chat_id'].startswith('channel:')
+                        else ''
+                    )
 
                     # Use output from backend if provided (OR-compliant backends),
                     # otherwise generate from response content
@@ -5026,7 +5038,11 @@ async def streaming_chat_response_handler(response, ctx):
                     if item.get('status') == 'in_progress':
                         item['status'] = 'completed'
 
-                title = await Chats.get_chat_title_by_id(metadata['chat_id']) if not metadata['chat_id'].startswith('channel:') else ''
+                title = (
+                    await Chats.get_chat_title_by_id(metadata['chat_id'])
+                    if not metadata['chat_id'].startswith('channel:')
+                    else ''
+                )
                 data = {
                     'done': True,
                     'content': serialize_output(output),
