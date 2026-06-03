@@ -1107,6 +1107,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🚧 **OpenAI passthrough now opt-in.** Direct OpenAI catch-all proxy requests are now disabled by default and require enabling "ENABLE_OPENAI_API_PASSTHROUGH", so deployments relying on passthrough must explicitly turn it on after upgrading. [#23640](https://github.com/open-webui/open-webui/pull/23640)
 - 🗄️ **SQLite WAL default enabled.** SQLite deployments now default to enabling write-ahead logging, improving concurrent read and write behavior without requiring manual configuration. [Commit](https://github.com/open-webui/open-webui/commit/2f9e326dba3b1087932cb6b8075ed1881bd1c6d6)
 
+## [0.8.14] - 2026-06-02
+
+### Added
+
+- 🐳 **Local Ollama binary injection.** The Dockerfile now accepts `USE_LOCAL_OLLAMA=true` together with a `--build-context ollama-local=<path>` argument, allowing a locally-built Ollama binary to be bundled into the image instead of fetching it from upstream, with the install split into two explicit paths so the fallback download only runs when no local binary is provided.
+- 🛠️ **Build and run helper scripts.** Three new convenience scripts make local development easier: `build-cuda-ollama.sh` builds a CUDA + upstream-Ollama image, `build-cuda-spark.sh` builds a CUDA + local spark binary image using `docker buildx`, and `run-local.sh` starts the backend directly from the `.venv` virtualenv without Docker, auto-starting Ollama if it is not already running.
+
+### Changed
+
+- ⚡ **CUDA version bumped to cu133.** All references to `cu132` have been updated to `cu133` across the Dockerfile, CI workflow, and build scripts, targeting the latest PyTorch CUDA 13.3 nightly wheels with a fallback to CPU if no compatible wheels are found.
+- 🔧 **VS Code makefile configure-on-open disabled.** Added `makefile.configureOnOpen: false` to the workspace settings to suppress unwanted makefile auto-configuration prompts.
+- 📦 **Pyodide dependency updates.** Updated `black` from 26.3.1 to 26.5.1 and `pathspec` from 1.0.4 to 1.1.1 in the Pyodide lock file.
+
+### Fixed
+
+- 🔑 **Session auth token fallback.** `get_session_user` now gracefully falls back to the `token` cookie and then `request.state.token` when no `Authorization` header is present, preventing an unhandled exception on cookie-authenticated requests.
+
 ## [0.8.13] - 2026-04-02
 
 ### Changed
