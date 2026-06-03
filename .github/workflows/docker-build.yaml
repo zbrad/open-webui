@@ -219,7 +219,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  build-cuda132-image:
+  build-cuda133-image:
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -265,7 +265,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker images (cuda132 tag)
+      - name: Extract metadata for Docker images (cuda133 tag)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -276,10 +276,10 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda132
+            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda133
           flavor: |
             latest=${{ github.ref == 'refs/heads/main' }}
-            suffix=-cuda132,onlatest=true
+            suffix=-cuda133,onlatest=true
 
       - name: Extract metadata for Docker cache
         id: cache-meta
@@ -290,10 +290,10 @@ jobs:
             type=ref,event=branch
             ${{ github.ref_type == 'tag' && 'type=raw,value=main' || '' }}
           flavor: |
-            prefix=cache-cuda132-${{ matrix.platform }}-
+            prefix=cache-cuda133-${{ matrix.platform }}-
             latest=false
 
-      - name: Build Docker image (cuda132)
+      - name: Build Docker image (cuda133)
         uses: docker/build-push-action@v5
         id: build
         with:
@@ -308,7 +308,7 @@ jobs:
           build-args: |
             BUILD_HASH=${{ github.sha }}
             USE_CUDA=true
-            USE_CUDA_VER=cu132
+            USE_CUDA_VER=cu133
 
       - name: Export digest
         run: |
@@ -319,7 +319,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-cuda132-${{ env.PLATFORM_PAIR }}
+          name: digests-cuda133-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -640,9 +640,9 @@ jobs:
         run: |
           docker buildx imagetools inspect ${{ env.FULL_IMAGE_NAME }}:${{ steps.meta.outputs.version }}
 
-  merge-cuda132-images:
+  merge-cuda133-images:
     runs-on: ubuntu-latest
-    needs: [build-cuda132-image]
+    needs: [build-cuda133-image]
     steps:
       # GitHub Packages requires the entire repository name to be in lowercase
       # although the repository owner has a lowercase username, this prevents some people from running actions after forking
@@ -656,7 +656,7 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v5
         with:
-          pattern: digests-cuda132-*
+          pattern: digests-cuda133-*
           path: /tmp/digests
           merge-multiple: true
 
@@ -681,10 +681,10 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda132
+            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda133
           flavor: |
             latest=${{ github.ref == 'refs/heads/main' }}
-            suffix=-cuda132,onlatest=true
+            suffix=-cuda133,onlatest=true
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
@@ -812,7 +812,7 @@ jobs:
   copy-to-dockerhub:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    needs: [merge-main-images, merge-cuda-images, merge-cuda132-images, merge-ollama-images, merge-slim-images]
+    needs: [merge-main-images, merge-cuda-images, merge-cuda133-images, merge-ollama-images, merge-slim-images]
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -822,8 +822,8 @@ jobs:
             suffix: ""
           - variant: cuda
             suffix: "-cuda"
-          - variant: cuda132
-            suffix: "-cuda132"
+          - variant: cuda133
+            suffix: "-cuda133"
           - variant: ollama
             suffix: "-ollama"
           - variant: slim

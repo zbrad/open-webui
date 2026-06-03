@@ -5,8 +5,11 @@ ARG USE_CUDA=false
 ARG USE_OLLAMA=false
 ARG USE_SLIM=false
 ARG USE_PERMISSION_HARDENING=false
+# Set USE_LOCAL_OLLAMA=true and pass --build-context ollama-local=<path> to bundle a locally-built binary
+ARG USE_LOCAL_OLLAMA=false
+ARG LOCAL_OLLAMA_BIN=ollama-server-local
 # Tested with cu117 for CUDA 11 and cu121 for CUDA 12
-ARG USE_CUDA_VER=cu132
+ARG USE_CUDA_VER=cu133
 # any sentence transformer model; models to use can be found at https://huggingface.co/models?library=sentence-transformers
 # Leaderboard: https://huggingface.co/spaces/mteb/leaderboard 
 # for better performance and multilangauge support use "intfloat/multilingual-e5-large" (~2.5GB) or "intfloat/multilingual-e5-base" (~1.5GB)
@@ -22,6 +25,10 @@ ARG BUILD_HASH=dev-build
 # Override at your own risk - non-root configurations are untested
 ARG UID=0
 ARG GID=0
+
+######## Local Ollama binary context ########
+# Empty by default; override with --build-context ollama-local=<path-to-ollama-build-dir>
+FROM scratch AS ollama-local
 
 ######## WebUI frontend ########
 FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
@@ -51,6 +58,8 @@ ARG USE_OLLAMA
 ARG USE_CUDA_VER
 ARG USE_SLIM
 ARG USE_PERMISSION_HARDENING
+ARG USE_LOCAL_OLLAMA
+ARG LOCAL_OLLAMA_BIN
 ARG USE_EMBEDDING_MODEL
 ARG USE_RERANKING_MODEL
 ARG USE_AUXILIARY_EMBEDDING_MODEL
@@ -157,9 +166,9 @@ RUN set -e; \
     echo "CUDA torch wheels are unavailable for $ARCH in this build path; using CPU torch wheels"; \
     pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir; \
     elif ! pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/$USE_CUDA_DOCKER_VER --no-cache-dir; then \
-    echo "No compatible torch wheels found for $USE_CUDA_DOCKER_VER; falling back to cu132 nightly index"; \
-    if ! pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu132 --no-cache-dir; then \
-    echo "No compatible cu132 wheels found; falling back to CPU torch wheels"; \
+    echo "No compatible torch wheels found for $USE_CUDA_DOCKER_VER; falling back to cu133 nightly index"; \
+    if ! pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu133 --no-cache-dir; then \
+    echo "No compatible cu133 wheels found; falling back to CPU torch wheels"; \
     pip3 install 'torch>=2.11.0' torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir; \
     fi; \
     fi; \
@@ -186,9 +195,16 @@ RUN set -e; \
     rm -rf /var/lib/apt/lists/*;
 
 # Install Ollama if requested
-RUN if [ "$USE_OLLAMA" = "true" ]; then \
+# Path A: copy locally-built binary from --build-context ollama-local=<path>
+RUN --mount=type=bind,from=ollama-local,source=.,target=/mnt/ollama \
+    if [ "$USE_OLLAMA" = "true" ] && [ "$USE_LOCAL_OLLAMA" = "true" ]; then \
+    echo "Installing local Ollama binary: ${LOCAL_OLLAMA_BIN}"; \
+    install -m755 "/mnt/ollama/${LOCAL_OLLAMA_BIN}" /usr/local/bin/ollama; \
+    fi
+# Path B: download from upstream
+RUN if [ "$USE_OLLAMA" = "true" ] && [ "$USE_LOCAL_OLLAMA" != "true" ]; then \
     date +%s > /tmp/ollama_build_hash && \
-    echo "Cache broken at timestamp: `cat /tmp/ollama_build_hash`" && \
+    echo "Cache broken at timestamp: $(cat /tmp/ollama_build_hash)" && \
     curl -fsSL https://ollama.com/install.sh | sh && \
     rm -rf /var/lib/apt/lists/*; \
     fi
