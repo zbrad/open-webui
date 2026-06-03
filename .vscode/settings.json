@@ -9,5 +9,6 @@
     }
   },
   "terminal.integrated.defaultProfile.linux": "bash",
-  "python.terminal.activateEnvInCurrentTerminal": true
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "makefile.configureOnOpen": false
 }
