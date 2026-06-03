@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
 # ---------------------------------------------------------------------------
 # Tear down the compose project and remove all volumes (including data).
 # ---------------------------------------------------------------------------

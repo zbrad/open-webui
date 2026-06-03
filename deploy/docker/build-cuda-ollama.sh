@@ -3,6 +3,7 @@
 
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CUDA_VER="${CUDA_VER:-cu133}"
 IMAGE_TAG="${IMAGE_TAG:-open-webui:cuda133-ollama}"
 
@@ -14,6 +15,6 @@ docker build \
     --build-arg USE_OLLAMA=true \
     -t "${IMAGE_TAG}" \
     "${@}" \
-    .
+    "${REPO_ROOT}"
 
 echo "Done: ${IMAGE_TAG}"

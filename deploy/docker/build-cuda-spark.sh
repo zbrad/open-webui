@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Build open-webui with CUDA cu133 and local ollama-server-spark binary.
-# Requires: docker buildx, ../ollama/ollama-server-spark
+# Requires: docker buildx, <repo-root>/../ollama/ollama-server-spark
 
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OLLAMA_BIN="${OLLAMA_BIN:-ollama-server-spark}"
-OLLAMA_DIR="${OLLAMA_DIR:-../ollama}"
+OLLAMA_DIR="${OLLAMA_DIR:-${REPO_ROOT}/../ollama}"
 CUDA_VER="${CUDA_VER:-cu133}"
 IMAGE_TAG="${IMAGE_TAG:-open-webui:cuda133-spark}"
 
@@ -25,6 +26,6 @@ docker buildx build \
     --build-context ollama-local="${OLLAMA_DIR}" \
     -t "${IMAGE_TAG}" \
     "${@}" \
-    .
+    "${REPO_ROOT}"
 
 echo "Done: ${IMAGE_TAG}"

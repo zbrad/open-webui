@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
 # ---------------------------------------------------------------------------
 # Interactive docker compose launcher for Open WebUI.
 # Supports GPU auto-detection, configurable ports, data mounts, and Playwright.
