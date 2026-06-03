@@ -13,6 +13,10 @@ PORT="${PORT:-3000}"
 HOST="${HOST:-0.0.0.0}"
 OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"
 UVICORN_WORKERS="${UVICORN_WORKERS:-1}"
+CORS_ALLOW_ORIGIN="${CORS_ALLOW_ORIGIN:-http://localhost:${PORT}}"
+USER_AGENT="${USER_AGENT:-open-webui}"
+LOKY_MAX_CPU_COUNT="${LOKY_MAX_CPU_COUNT:-1}"
+TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 
 usage() {
     echo "Usage: [PORT=8080] [HOST=0.0.0.0] [OLLAMA_BASE_URL=http://localhost:11434] $0"
@@ -63,6 +67,10 @@ cd "${BACKEND_DIR}"
 exec env \
     WEBUI_SECRET_KEY="${WEBUI_SECRET_KEY}" \
     OLLAMA_BASE_URL="${OLLAMA_BASE_URL}" \
+    CORS_ALLOW_ORIGIN="${CORS_ALLOW_ORIGIN}" \
+    USER_AGENT="${USER_AGENT}" \
+    LOKY_MAX_CPU_COUNT="${LOKY_MAX_CPU_COUNT}" \
+    TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM}" \
     "${PYTHON}" -m uvicorn open_webui.main:app \
         --host "${HOST}" \
         --port "${PORT}" \

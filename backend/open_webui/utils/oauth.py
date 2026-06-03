@@ -17,7 +17,11 @@ from typing import Literal, Optional
 
 import aiohttp
 from authlib.integrations.starlette_client import OAuth
-from authlib.jose.errors import BadSignatureError
+import warnings as _warnings
+from authlib.deprecate import AuthlibDeprecationWarning as _AuthlibDeprecationWarning
+with _warnings.catch_warnings():
+    _warnings.filterwarnings("ignore", category=_AuthlibDeprecationWarning)
+    from authlib.jose.errors import BadSignatureError
 from authlib.oauth2.rfc6749.errors import OAuth2Error
 from authlib.oidc.core import UserInfo
 from cryptography.fernet import Fernet
