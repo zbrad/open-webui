@@ -61,7 +61,7 @@ Settings collected:
 | `HOST` | `0.0.0.0` | |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | |
 | `UVICORN_WORKERS` | `1` | |
-| `CORS_ALLOW_ORIGIN` | `http://localhost:<PORT>` | |
+| `CORS_ALLOW_ORIGIN` | `*` (service) / `http://localhost:<PORT>` (local) | |
 | `WEBUI_SECRET_KEY` | auto-generated | Signs all JWTs — changing it invalidates active sessions |
 | `OPENAI_API_KEY` | _(optional)_ | Any OpenAI-compatible endpoint |
 | `OPENAI_API_BASE_URL` | `https://api.openai.com/v1` | |

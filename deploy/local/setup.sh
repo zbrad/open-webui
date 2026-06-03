@@ -127,7 +127,8 @@ ask "Port"             "${e_port:-3000}"                        o_port
 ask "Host"             "${e_host:-0.0.0.0}"                    o_host
 ask "Ollama base URL"  "${e_ollama:-http://localhost:11434}"    o_ollama
 ask "Uvicorn workers"  "${e_workers:-1}"                        o_workers
-ask "CORS allow origin" "${e_cors:-http://localhost:${o_port}}" o_cors
+default_cors="$([[ "$MODE" == "service" ]] && echo "*" || echo "http://localhost:${o_port}")"
+ask "CORS allow origin" "${e_cors:-${default_cors}}" o_cors
 
 # ── Secret key ─────────────────────────────────────────────────────────────────
 
