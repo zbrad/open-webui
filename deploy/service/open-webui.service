@@ -1,0 +1,15 @@
+[Unit]
+Description=Open WebUI
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__INSTALL_DIR__
+EnvironmentFile=/etc/open-webui/env
+ExecStart=__INSTALL_DIR__/run-local.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

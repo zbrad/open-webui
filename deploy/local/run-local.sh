@@ -5,9 +5,19 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-BACKEND_DIR="${SCRIPT_DIR}/backend"
-VENV="${SCRIPT_DIR}/.venv"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." &>/dev/null && pwd)"
+BACKEND_DIR="${REPO_ROOT}/backend"
+VENV="${REPO_ROOT}/.venv"
 PYTHON="${VENV}/bin/python"
+
+# Source local env overrides if present (written by deploy/local/setup.sh)
+ENV_LOCAL="${REPO_ROOT}/.env.local"
+if [[ -f "${ENV_LOCAL}" ]]; then
+    set -o allexport
+    # shellcheck source=/dev/null
+    source "${ENV_LOCAL}"
+    set +o allexport
+fi
 
 PORT="${PORT:-3000}"
 HOST="${HOST:-0.0.0.0}"
@@ -50,11 +60,13 @@ if ! curl -sf "http://localhost:11434" &>/dev/null; then
     done
 fi
 
-# Generate or load secret key
+# Secret key precedence:
+#   1. WEBUI_SECRET_KEY already in environment (set by .env.local or /etc/open-webui/env via setup.sh)
+#   2. Fallback: generate once into backend/.webui_secret_key for users who skipped setup.sh
 KEY_FILE="${BACKEND_DIR}/.webui_secret_key"
 if [[ -z "${WEBUI_SECRET_KEY:-}" ]]; then
     if [[ ! -f "${KEY_FILE}" ]]; then
-        echo "Generating WEBUI_SECRET_KEY..."
+        echo "Generating WEBUI_SECRET_KEY (run deploy/local/setup.sh to manage this explicitly)..."
         head -c 12 /dev/random | base64 > "${KEY_FILE}"
     fi
     WEBUI_SECRET_KEY="$(cat "${KEY_FILE}")"
@@ -71,6 +83,11 @@ exec env \
     USER_AGENT="${USER_AGENT}" \
     LOKY_MAX_CPU_COUNT="${LOKY_MAX_CPU_COUNT}" \
     TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM}" \
+    ${OPENAI_API_KEY:+OPENAI_API_KEY="${OPENAI_API_KEY}"} \
+    ${OPENAI_API_BASE_URL:+OPENAI_API_BASE_URL="${OPENAI_API_BASE_URL}"} \
+    ${WEBUI_ADMIN_EMAIL:+WEBUI_ADMIN_EMAIL="${WEBUI_ADMIN_EMAIL}"} \
+    ${WEBUI_ADMIN_PASSWORD:+WEBUI_ADMIN_PASSWORD="${WEBUI_ADMIN_PASSWORD}"} \
+    ${WEBUI_ADMIN_NAME:+WEBUI_ADMIN_NAME="${WEBUI_ADMIN_NAME}"} \
     "${PYTHON}" -m uvicorn open_webui.main:app \
         --host "${HOST}" \
         --port "${PORT}" \
