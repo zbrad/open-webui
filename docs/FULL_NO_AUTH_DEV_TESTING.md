@@ -138,6 +138,57 @@ Expected:
 Expected:
 - 403 response with message indicating only unauthenticated loopback clients are allowed.
 
+## How External Callers Get an API Key
+
+Use this flow when the client is not on loopback and must authenticate.
+
+### 1) Ensure API keys are enabled
+
+Check admin config:
+
+curl -sS http://localhost:8080/api/v1/auths/admin/config
+
+Required values:
+
+- ENABLE_API_KEYS: true
+- ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS: false (or configure allowed paths to include your target endpoints)
+
+### 2) Generate a key
+
+From a trusted local admin session:
+
+curl -sS -X POST http://localhost:8080/api/v1/auths/api_key
+
+Response contains:
+
+- api_key: sk-...
+
+### 3) Call chat API from external client
+
+Use Bearer auth against the chat endpoint:
+
+curl -sS -X POST http://<host-ip>:8080/api/chat/completions \
+  -H "Authorization: Bearer sk-<real_key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "nemotron-3-nano:latest",
+    "messages": [{"role": "user", "content": "reply with EXTERNAL_KEY_OK"}],
+    "stream": false
+  }'
+
+Expected:
+
+- 200 response and model output.
+
+### 4) Troubleshooting
+
+- 403 with FULL_NO_AUTH_DEV only accepts unauthenticated loopback clients:
+  no key was provided (or header not forwarded by proxy/client).
+- 401 token expired or invalid:
+  key is stale/invalid, or client is still using an old cached secret.
+- 403 API key not allowed:
+  ENABLE_API_KEYS is false, permission is missing, or endpoint restrictions block path.
+
 ### F. Negative security tests (must fail)
 
 These tests verify guardrails are active.
