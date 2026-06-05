@@ -66,6 +66,7 @@ Settings collected:
 | `OPENAI_API_KEY` | _(optional)_ | Any OpenAI-compatible endpoint |
 | `OPENAI_API_BASE_URL` | `https://api.openai.com/v1` | |
 | `WEBUI_ADMIN_EMAIL/PASSWORD/NAME` | _(optional)_ | Bootstraps the first admin on first startup only |
+| `WEBUI_DEFAULT_API_KEY` | auto-generated | Fixed API key for integrations — run `bootstrap-api-key.sh` after first start |
 
 Keys not listed above that exist in the env file are preserved unchanged on re-run.
 
@@ -107,6 +108,10 @@ deploy/service/deploy.sh
 
 # 3. Start
 sudo systemctl start open-webui
+
+# 4. (Optional) Bootstrap the default API key for integrations
+#    Wait ~5s for the admin user to be created on first startup, then:
+deploy/service/bootstrap-api-key.sh
 ```
 
 Useful commands:
@@ -124,6 +129,29 @@ To update config without reinstalling the unit:
 ```bash
 deploy/local/setup.sh --mode service
 sudo systemctl restart open-webui
+```
+
+### Testing the API endpoint
+
+After bootstrapping the default API key, test it:
+
+```bash
+# Get the API key from the env file
+API_KEY=$(grep WEBUI_DEFAULT_API_KEY /etc/open-webui/env | cut -d= -f2)
+
+# Test the models endpoint
+curl http://localhost:8080/api/models \
+  -H "Authorization: Bearer $API_KEY"
+
+# Test chat completion
+curl -X POST http://localhost:8080/api/chat/completions \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:latest",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": false
+  }'
 ```
 
 ---

@@ -16,7 +16,7 @@ SERVICE_ENV="/etc/open-webui/env"
 # Keys this script manages — anything else in the existing file is preserved.
 MANAGED_KEYS="PORT|HOST|OLLAMA_BASE_URL|UVICORN_WORKERS|CORS_ALLOW_ORIGIN|\
 WEBUI_SECRET_KEY|OPENAI_API_KEY|OPENAI_API_BASE_URL|\
-WEBUI_ADMIN_EMAIL|WEBUI_ADMIN_PASSWORD|WEBUI_ADMIN_NAME"
+WEBUI_ADMIN_EMAIL|WEBUI_ADMIN_PASSWORD|WEBUI_ADMIN_NAME|WEBUI_DEFAULT_API_KEY"
 
 # ── ANSI helpers ───────────────────────────────────────────────────────────────
 
@@ -113,6 +113,7 @@ e_openai_key=$(read_env "$ENV_FILE" OPENAI_API_KEY)
 e_openai_url=$(read_env "$ENV_FILE" OPENAI_API_BASE_URL)
 e_admin_email=$(read_env "$ENV_FILE" WEBUI_ADMIN_EMAIL)
 e_admin_name=$(read_env "$ENV_FILE" WEBUI_ADMIN_NAME)
+e_api_key=$(read_env "$ENV_FILE" WEBUI_DEFAULT_API_KEY)
 extra_keys=$(read_extra_keys "$ENV_FILE")
 
 echo
@@ -170,6 +171,10 @@ printf "%bAdmin password%b ${dim}[Enter to skip / unchanged]%b: " "$bold" "$rese
 read -rs o_admin_password; echo
 ask "Admin name"     "${e_admin_name:-Admin}" o_admin_name
 
+# Generate default API key if none exists
+default_api_key="${e_api_key:-sk-$(head -c 16 /dev/random | xxd -p -c 32)}"
+ask "Default API key" "${default_api_key}" o_api_key
+
 # ── Preview ────────────────────────────────────────────────────────────────────
 
 echo
@@ -185,6 +190,7 @@ printf "  %-28s %s\n" "WEBUI_SECRET_KEY"  "<set>"
 [[ -n "$o_admin_email" ]]    && printf "  %-28s %s\n" "WEBUI_ADMIN_EMAIL"    "$o_admin_email"
 [[ -n "$o_admin_password" ]] && printf "  %-28s %s\n" "WEBUI_ADMIN_PASSWORD" "<set>"
 [[ -n "$o_admin_name" ]]     && printf "  %-28s %s\n" "WEBUI_ADMIN_NAME"     "$o_admin_name"
+[[ -n "$o_api_key" ]]        && printf "  %-28s %s\n" "WEBUI_DEFAULT_API_KEY" "$o_api_key"
 if [[ -n "$extra_keys" ]]; then
     echo
     printf "  %b(preserved from existing file)%b\n" "$dim" "$reset"
@@ -223,6 +229,7 @@ fi
 if [[ -n "$o_admin_email" ]]; then
     printf "\nWEBUI_ADMIN_EMAIL=%s\nWEBUI_ADMIN_PASSWORD=%s\nWEBUI_ADMIN_NAME=%s\n" \
         "$o_admin_email" "$o_admin_password" "$o_admin_name" >> "$ENV_FILE"
+    [[ -n "$o_api_key" ]] && printf "WEBUI_DEFAULT_API_KEY=%s\n" "$o_api_key" >> "$ENV_FILE"
 fi
 
 if [[ -n "$extra_keys" ]]; then
