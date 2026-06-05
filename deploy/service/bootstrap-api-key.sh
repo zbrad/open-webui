@@ -25,9 +25,14 @@ set -o allexport
 source "$ENV_FILE"
 set +o allexport
 
-if [[ -z "${WEBUI_ADMIN_EMAIL:-}" || -z "${WEBUI_DEFAULT_API_KEY:-}" ]]; then
-    echo "WEBUI_ADMIN_EMAIL and WEBUI_DEFAULT_API_KEY must be set in $ENV_FILE" >&2
-    exit 1
+if [[ -z "${WEBUI_ADMIN_EMAIL:-}" ]]; then
+    echo "WEBUI_ADMIN_EMAIL not set in $ENV_FILE — skipping API key bootstrap" >&2
+    exit 0
+fi
+
+if [[ -z "${WEBUI_DEFAULT_API_KEY:-}" ]]; then
+    echo "WEBUI_DEFAULT_API_KEY not set in $ENV_FILE — skipping API key bootstrap" >&2
+    exit 0
 fi
 
 # Check if admin user exists

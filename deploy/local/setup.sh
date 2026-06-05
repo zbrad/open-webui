@@ -167,13 +167,21 @@ ask "API base URL" "${e_openai_url:-https://api.openai.com/v1}" o_openai_url
 
 header "Admin user bootstrap  ${dim}(optional — only used on first startup)${reset}"
 ask "Admin email"    "${e_admin_email:-}"     o_admin_email
-printf "%bAdmin password%b ${dim}[Enter to skip / unchanged]%b: " "$bold" "$reset" "$reset"
-read -rs o_admin_password; echo
-ask "Admin name"     "${e_admin_name:-Admin}" o_admin_name
 
-# Generate default API key if none exists
-default_api_key="${e_api_key:-sk-$(head -c 16 /dev/random | xxd -p -c 32)}"
-ask "Default API key" "${default_api_key}" o_api_key
+# Only prompt for password and API key if admin email is set
+if [[ -n "$o_admin_email" ]]; then
+    printf "%bAdmin password%b ${dim}[Enter to skip / unchanged]%b: " "$bold" "$reset" "$reset"
+    read -rs o_admin_password; echo
+    ask "Admin name"     "${e_admin_name:-Admin}" o_admin_name
+
+    # Generate default API key if none exists
+    default_api_key="${e_api_key:-sk-$(head -c 16 /dev/random | xxd -p -c 32)}"
+    ask "Default API key" "${default_api_key}" o_api_key
+else
+    o_admin_password=""
+    o_admin_name=""
+    o_api_key=""
+fi
 
 # ── Preview ────────────────────────────────────────────────────────────────────
 
