@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import mimetypes
@@ -96,6 +97,7 @@ from open_webui.env import (
     ENABLE_PYODIDE_FILE_PERSISTENCE,
     ENABLE_VERSION_UPDATE_CHECK,
     ENABLE_WEBSOCKET_SUPPORT,
+    FULL_NO_AUTH_DEV,
     GLOBAL_LOG_LEVEL,
     INSTANCE_ID,
     LICENSE_KEY,
@@ -280,6 +282,20 @@ async def emit_chat_list_event(metadata: dict, chat_id: str):
         await event_emitter({'type': 'chat:list', 'data': {'chat_id': chat_id, 'folder_id': folder_id}})
 
 
+def _is_loopback_host(host: str | None) -> bool:
+    if not host:
+        return True
+
+    normalized = host.strip().lower()
+    if normalized in {'localhost', '127.0.0.1', '::1'}:
+        return True
+
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         try:
@@ -331,6 +347,20 @@ async def lifespan(app: FastAPI):
 
     app.state.instance_id = INSTANCE_ID
     start_logger()
+
+    if FULL_NO_AUTH_DEV:
+        if ENV != 'dev':
+            raise RuntimeError('FULL_NO_AUTH_DEV is only allowed when ENV=dev')
+
+        webui_url_value = WEBUI_URL.value if hasattr(WEBUI_URL, 'value') else WEBUI_URL
+        webui_host = urlparse(str(webui_url_value)).hostname if webui_url_value else None
+        if webui_host and not _is_loopback_host(webui_host):
+            raise RuntimeError(
+                f'FULL_NO_AUTH_DEV requires a loopback WEBUI_URL, got host={webui_host!r}. '
+                'Set WEBUI_URL to localhost/127.0.0.1/::1 or unset it.'
+            )
+
+        log.warning('FULL_NO_AUTH_DEV is enabled. Authentication is bypassed for loopback clients only.')
 
     if RESET_CONFIG_ON_START:
         await async_reset_config()
@@ -487,6 +517,7 @@ app.state.WEBUI_NAME = WEBUI_NAME
 app.state.LICENSE_METADATA = None
 app.state.USER_COUNT = None
 app.state.EXTERNAL_PWA_MANIFEST_URL = EXTERNAL_PWA_MANIFEST_URL
+app.state.FULL_NO_AUTH_DEV = FULL_NO_AUTH_DEV
 
 
 ########################################
@@ -2165,6 +2196,7 @@ async def get_app_config(request: Request):
         'features': {
             # --- Public: required by login/signup page pre-auth ---
             'auth': WEBUI_AUTH,
+            'full_no_auth_dev': bool(getattr(app.state, 'FULL_NO_AUTH_DEV', False)),
             'auth_trusted_header': bool(WEBUI_AUTH_TRUSTED_EMAIL_HEADER),
             'enable_signup_password_confirmation': ENABLE_SIGNUP_PASSWORD_CONFIRMATION,
             'enable_ldap': config.get('ldap.enable'),

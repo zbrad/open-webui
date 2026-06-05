@@ -4,6 +4,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -177,6 +178,43 @@ async def get_password_hash(password: str) -> str:
     raise ValueError(f'Unsupported PASSWORD_HASH_ALGORITHM: {PASSWORD_HASH_ALGORITHM}')
 
 
+def _is_loopback_client(request: Request) -> bool:
+    client = request.client
+    if client is None or not client.host:
+        return False
+
+    host = client.host.strip().lower()
+    if host in {'localhost', '127.0.0.1', '::1'}:
+        return True
+
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+async def _get_or_create_full_no_auth_dev_user() -> Optional[object]:
+    user = await Users.get_user_by_email('admin@localhost')
+    if user is not None:
+        if user.role != 'admin':
+            user = await Users.update_user_role_by_id(user.id, 'admin')
+        return user
+
+    if await Users.has_users():
+        first_user = await Users.get_first_user()
+        if first_user is not None:
+            if first_user.role != 'admin':
+                first_user = await Users.update_user_role_by_id(first_user.id, 'admin')
+            return first_user
+
+    return await Auths.insert_new_auth(
+        email='admin@localhost',
+        password=await get_password_hash(str(uuid.uuid4())),
+        name='Dev Admin',
+        role='admin',
+    )
+
+
 def validate_password(password: str) -> bool:
     # bcrypt only accepts 72 bytes; reject long new passwords instead of storing an unusable hash.
     if PASSWORD_HASH_ALGORITHM == 'bcrypt' and len(password.encode('utf-8')) > PASSWORD_BCRYPT_MAX_BYTES:
@@ -337,6 +375,23 @@ async def get_current_user(
     # Fallback to request.state.token (set by middleware, e.g. for x-api-key)
     if token is None and hasattr(request.state, 'token') and request.state.token:
         token = request.state.token.credentials
+
+    if bool(getattr(request.app.state, 'FULL_NO_AUTH_DEV', False)):
+        if token is None:
+            if not _is_loopback_client(request):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail='FULL_NO_AUTH_DEV only accepts unauthenticated loopback clients',
+                )
+
+            user = await _get_or_create_full_no_auth_dev_user()
+            if user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail='Unable to provision full no-auth dev user',
+                )
+
+            return user
 
     if token is None:
         raise HTTPException(status_code=401, detail='Not authenticated')

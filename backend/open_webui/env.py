@@ -703,6 +703,7 @@ else:
 ####################################
 
 WEBUI_AUTH = os.getenv('WEBUI_AUTH', 'True').lower() == 'true'
+FULL_NO_AUTH_DEV = os.getenv('FULL_NO_AUTH_DEV', 'False').lower() == 'true'
 
 ENABLE_INITIAL_ADMIN_SIGNUP = os.getenv('ENABLE_INITIAL_ADMIN_SIGNUP', 'False').lower() == 'true'
 ENABLE_SIGNUP_PASSWORD_CONFIRMATION = os.getenv('ENABLE_SIGNUP_PASSWORD_CONFIRMATION', 'False').lower() == 'true'
@@ -739,6 +740,12 @@ if WEBUI_AUTH and WEBUI_SECRET_KEY == '':
         'If you start the backend another way (e.g. invoking uvicorn directly, which is unsupported), '
         'you must set WEBUI_SECRET_KEY yourself to a long random value.\n'
         'See https://docs.openwebui.com/reference/env-configuration#webui_secret_key'
+    )
+
+if FULL_NO_AUTH_DEV and WEBUI_AUTH:
+    raise SystemExit(
+        'FULL_NO_AUTH_DEV requires WEBUI_AUTH=False.\n'
+        'Set WEBUI_AUTH=False when enabling FULL_NO_AUTH_DEV.'
     )
 
 ENABLE_COMPRESSION_MIDDLEWARE = os.getenv('ENABLE_COMPRESSION_MIDDLEWARE', 'True').lower() == 'true'
