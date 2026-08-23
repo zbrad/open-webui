@@ -359,6 +359,36 @@ async def speech(request: Request, user=Depends(get_verified_user)):
         raise HTTPException(status_code=401, detail=ERROR_MESSAGES.OPENAI_NOT_FOUND)
 
 
+async def get_connections_liveness(request: Request, user: UserModel) -> dict[str, bool]:
+    """Probe every enabled OpenAI-compatible connection and report whether it
+    answered. Reuses the same request path (and timeout) real model-list
+    fetches use, so 'live' here means 'a request to this connection would
+    currently succeed', not just 'the connection is configured'.
+    """
+    if not request.app.state.config.ENABLE_OPENAI_API:
+        return {}
+
+    api_base_urls = request.app.state.config.OPENAI_API_BASE_URLS
+    api_keys = request.app.state.config.OPENAI_API_KEYS
+    api_configs = request.app.state.config.OPENAI_API_CONFIGS
+
+    tasks = []
+    indices = []
+    for idx, url in enumerate(api_base_urls):
+        api_config = api_configs.get(
+            str(idx),
+            api_configs.get(url, {}),  # Legacy support
+        )
+        if not api_config.get('enable', True):
+            continue
+        key = api_keys[idx] if idx < len(api_keys) else ''
+        tasks.append(get_models_request(request, url, key, user=user, config=api_config))
+        indices.append(idx)
+
+    responses = await asyncio.gather(*tasks) if tasks else []
+    return {str(idx): response is not None for idx, response in zip(indices, responses)}
+
+
 async def get_all_models_responses(request: Request, user: UserModel) -> list:
     if not request.app.state.config.ENABLE_OPENAI_API:
         return []
@@ -564,6 +594,17 @@ async def get_all_models(request: Request, user: UserModel) -> dict[str, list]:
 
     request.app.state.OPENAI_MODELS = models
     return {'data': list(models.values())}
+
+
+@router.get('/models/liveness')
+async def get_models_liveness(request: Request, user=Depends(get_verified_user)):
+    """Per-connection reachability, keyed by urlIdx (as a string) -- used by
+    the chat model picker to grey out models whose backing connection isn't
+    currently answering, without waiting for the full model-list fetch/cache
+    cycle. Verified-user-accessible (not admin) since regular chat users
+    need this to render the picker.
+    """
+    return await get_connections_liveness(request, user=user)
 
 
 @router.get('/models')

@@ -469,6 +469,37 @@ except Exception:
     TERMINAL_PROXY_HEADERS = {}
 
 ####################################
+# MODEL_SERVICES
+#
+# Admin control over local llama.cpp model servers launched as systemd
+# --user services (e.g. via a `nemo.sh`-style launcher). Off by default:
+# this lets the backend run `systemctl --user` and a launcher script on
+# the host it's running on, which only makes sense (and is only safe) when
+# the backend and the model servers share the same machine/user.
+####################################
+
+MODEL_SERVICES_ENABLE = ConfigVar(
+    'MODEL_SERVICES_ENABLE',
+    'model_services.enable',
+    os.getenv('MODEL_SERVICES_ENABLE', 'False').lower() == 'true',
+)
+
+MODEL_SERVICES_ALIASES_PATH = ConfigVar(
+    'MODEL_SERVICES_ALIASES_PATH',
+    'model_services.aliases_path',
+    os.getenv(
+        'MODEL_SERVICES_ALIASES_PATH',
+        os.path.expanduser('~/gh/llama.cpp/models/aliases.json'),
+    ),
+)
+
+MODEL_SERVICES_LAUNCHER_PATH = ConfigVar(
+    'MODEL_SERVICES_LAUNCHER_PATH',
+    'model_services.launcher_path',
+    os.getenv('MODEL_SERVICES_LAUNCHER_PATH', os.path.expanduser('~/.local/bin/nemo.sh')),
+)
+
+####################################
 # Code Interpreter
 ####################################
 

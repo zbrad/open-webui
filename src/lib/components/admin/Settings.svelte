@@ -21,6 +21,7 @@
 	import Evaluations from './Settings/Evaluations.svelte';
 	import CodeExecution from './Settings/CodeExecution.svelte';
 	import Integrations from './Settings/Integrations.svelte';
+	import ModelServices from './Settings/ModelServices.svelte';
 
 	import ChartBar from '../icons/ChartBar.svelte';
 	import DocumentChartBar from '../icons/DocumentChartBar.svelte';
@@ -243,11 +244,24 @@
 			title: 'Database',
 			route: '/admin/settings/db',
 			keywords: ['database', 'export', 'import', 'backup', 'chats', 'users']
+		},
+		{
+			id: 'model-services',
+			title: 'Model Services',
+			route: '/admin/settings/model-services',
+			// Host-specific + security-sensitive (starts/stops local systemd
+			// services) -- only shown when the admin has opted in server-side.
+			requiresFeature: 'enable_model_services',
+			keywords: ['model services', 'llama.cpp', 'systemd', 'memory', 'start', 'stop']
 		}
 	];
 
 	const setFilteredSettings = () => {
 		filteredSettings = allSettings.filter((tab) => {
+			if (tab.requiresFeature && !$config?.features?.[tab.requiresFeature]) {
+				return false;
+			}
+
 			const searchTerm = search.toLowerCase().trim();
 			return (
 				search === '' ||
@@ -256,6 +270,10 @@
 			);
 		});
 	};
+
+	$: if ($config) {
+		setFilteredSettings();
+	}
 
 	const searchDebounceHandler = () => {
 		if (searchDebounceTimeout) {
@@ -527,6 +545,8 @@
 			<Evaluations />
 		{:else if selectedTab === 'integrations'}
 			<Integrations />
+		{:else if selectedTab === 'model-services'}
+			<ModelServices />
 		{:else if selectedTab === 'documents'}
 			<Documents
 				on:save={async () => {

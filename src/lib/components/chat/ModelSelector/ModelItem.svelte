@@ -23,6 +23,7 @@
 	export let item: any = {};
 	export let index: number = -1;
 	export let value: string = '';
+	export let live: boolean = true;
 
 	export let unloadModelHandler: (modelValue: string) => void = () => {};
 	export let pinModelHandler: (modelId: string) => void = () => {};
@@ -47,14 +48,19 @@
 <button
 	role="option"
 	aria-selected={value === item.value}
+	aria-disabled={!live}
 	aria-label={$i18n.t('Select {{modelName}} model', { modelName: item.label })}
-	class="flex group/item w-full text-left font-medium line-clamp-1 select-none items-center rounded-button py-2 pl-3 pr-1.5 text-sm text-gray-700 dark:text-gray-100 outline-hidden transition-all duration-75 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl cursor-pointer data-highlighted:bg-muted {index ===
+	title={!live ? $i18n.t('Not reachable') : undefined}
+	class="flex group/item w-full text-left font-medium line-clamp-1 select-none items-center rounded-button py-2 pl-3 pr-1.5 text-sm text-gray-700 dark:text-gray-100 outline-hidden transition-all duration-75 rounded-xl data-highlighted:bg-muted {index ===
 	selectedModelIdx
 		? 'bg-gray-100 dark:bg-gray-800 group-hover:bg-transparent'
-		: ''}"
+		: ''} {live
+		? 'hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'
+		: 'opacity-50 cursor-not-allowed'}"
 	data-arrow-selected={index === selectedModelIdx}
 	data-value={item.value}
 	on:click={() => {
+		if (!live) return;
 		onClick();
 	}}
 >

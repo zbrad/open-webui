@@ -131,6 +131,35 @@ export const getOpenAIModels = async (token: string, urlIdx?: number) => {
 	return res;
 };
 
+export const getOpenAIConnectionsLiveness = async (
+	token: string
+): Promise<Record<string, boolean>> => {
+	let error = null;
+
+	const res = await fetch(`${OPENAI_API_BASE_URL}/models/liveness`, {
+		method: 'GET',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			...(token && { authorization: `Bearer ${token}` })
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			error = `OpenAI: ${err?.error?.message ?? 'Network Problem'}`;
+			return {};
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
 export const verifyOpenAIConnection = async (
 	token: string = '',
 	connection: dict = {},

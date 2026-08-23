@@ -287,6 +287,9 @@ from open_webui.config import (
     MISTRAL_OCR_API_BASE_URL,
     MISTRAL_OCR_API_KEY,
     MODEL_ORDER_LIST,
+    MODEL_SERVICES_ALIASES_PATH,
+    MODEL_SERVICES_ENABLE,
+    MODEL_SERVICES_LAUNCHER_PATH,
     MOJEEK_SEARCH_API_KEY,
     OAUTH_ADMIN_ROLES,
     OAUTH_ALLOWED_ROLES,
@@ -496,6 +499,7 @@ from open_webui.routers import (
     images,
     knowledge,
     memories,
+    model_services,
     models,
     notes,
     ollama,
@@ -862,6 +866,16 @@ app.state.TOOL_SERVERS = []
 
 app.state.config.TERMINAL_SERVER_CONNECTIONS = TERMINAL_SERVER_CONNECTIONS
 app.state.TERMINAL_SERVERS = []
+
+########################################
+#
+# MODEL SERVICES
+#
+########################################
+
+app.state.config.MODEL_SERVICES_ENABLE = MODEL_SERVICES_ENABLE
+app.state.config.MODEL_SERVICES_ALIASES_PATH = MODEL_SERVICES_ALIASES_PATH
+app.state.config.MODEL_SERVICES_LAUNCHER_PATH = MODEL_SERVICES_LAUNCHER_PATH
 
 ########################################
 #
@@ -1479,6 +1493,9 @@ if ENABLE_ADMIN_ANALYTICS:
     app.include_router(analytics.router, prefix='/api/v1/analytics', tags=['analytics'])
 app.include_router(utils.router, prefix='/api/v1/utils', tags=['utils'])
 app.include_router(terminals.router, prefix='/api/v1/terminals', tags=['terminals'])
+app.include_router(
+    model_services.router, prefix='/api/v1/model-services', tags=['model-services']
+)
 app.include_router(automations.router, prefix='/api/v1/automations', tags=['automations'])
 app.include_router(calendar.router, prefix='/api/v1/calendars', tags=['calendars'])
 
@@ -2462,6 +2479,7 @@ async def get_app_config(request: Request):
                     'enable_calendar': app.state.config.ENABLE_CALENDAR,
                     'enable_automations': app.state.config.ENABLE_AUTOMATIONS,
                     'enable_notes': app.state.config.ENABLE_NOTES,
+                    'enable_model_services': app.state.config.MODEL_SERVICES_ENABLE,
                     'enable_web_search': app.state.config.ENABLE_WEB_SEARCH,
                     'enable_code_execution': app.state.config.ENABLE_CODE_EXECUTION,
                     'enable_code_interpreter': app.state.config.ENABLE_CODE_INTERPRETER,

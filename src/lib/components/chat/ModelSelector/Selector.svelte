@@ -10,11 +10,12 @@
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { flyAndScale } from '$lib/utils/transitions';
 
-	import { createEventDispatcher, onMount, getContext, tick } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy, getContext, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 
 	import { deleteModel, getOllamaVersion, pullModel } from '$lib/apis/ollama';
 	import { unloadModel } from '$lib/apis';
+	import { getOpenAIConnectionsLiveness } from '$lib/apis/openai';
 
 	import {
 		user,
@@ -23,7 +24,8 @@
 		mobile,
 		temporaryChatEnabled,
 		settings,
-		config
+		config,
+		connectionsLiveness
 	} from '$lib/stores';
 	import { toast } from 'svelte-sonner';
 	import { capitalizeFirstLetter, sanitizeResponseContent, splitStream } from '$lib/utils';
@@ -387,6 +389,17 @@
 		ollamaVersion = await getOllamaVersion(localStorage.token).catch((error) => false);
 	};
 
+	let livenessInterval: ReturnType<typeof setInterval> | undefined;
+
+	const refreshConnectionsLiveness = async () => {
+		// No client-side feature-flag guard needed: the backend returns {}
+		// when ENABLE_OPENAI_API is off, so this is a cheap no-op either way.
+		const liveness = await getOpenAIConnectionsLiveness(localStorage.token).catch(() => null);
+		if (liveness) {
+			connectionsLiveness.set(liveness);
+		}
+	};
+
 	onMount(async () => {
 		if (items) {
 			tags = items
@@ -396,6 +409,13 @@
 			// Remove duplicates and sort
 			tags = Array.from(new Set(tags)).sort((a, b) => a.localeCompare(b));
 		}
+
+		refreshConnectionsLiveness();
+		livenessInterval = setInterval(refreshConnectionsLiveness, 15000);
+	});
+
+	onDestroy(() => {
+		if (livenessInterval) clearInterval(livenessInterval);
 	});
 
 	$: if (show) {
@@ -734,15 +754,22 @@
 								<div style="height: {visibleStart * ITEM_HEIGHT}px;" />
 								{#each filteredItems.slice(visibleStart, visibleEnd) as item, i (item.value)}
 									{@const index = visibleStart + i}
+									{@const live =
+										item.model?.urlIdx === undefined
+											? true
+											: ($connectionsLiveness[String(item.model.urlIdx)] ?? true)}
 									<ModelItem
 										{selectedModelIdx}
 										{item}
 										{index}
 										{value}
+										{live}
 										{pinModelHandler}
 										{unloadModelHandler}
 										{deleteModelHandler}
 										onClick={() => {
+											if (!live) return;
+
 											value = item.value;
 											selectedModelIdx = index;
 
