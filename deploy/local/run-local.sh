@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Run open-webui locally using the .venv Python install (no Docker).
-# Expects: .venv built, ollama on PATH.
+# Expects: .venv built. ollama on PATH is optional -- if present and not
+# already running, it's auto-started; if absent (e.g. serving models via
+# llama.cpp instead), that step is skipped.
 
 set -euo pipefail
 
@@ -47,8 +49,11 @@ TORCH_LIB="${VENV}/lib/python3.14/site-packages/torch/lib"
 CUDNN_LIB="${VENV}/lib/python3.14/site-packages/nvidia/cudnn/lib"
 export LD_LIBRARY_PATH="${TORCH_LIB}:${CUDNN_LIB}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
-# Start ollama if not already running
-if ! curl -sf "http://localhost:11434" &>/dev/null; then
+# Start ollama if it's installed and not already running. Skipped entirely
+# when the binary isn't on PATH (e.g. hosts that have moved to serving
+# models via llama.cpp instead) -- otherwise this silently no-ops after
+# burning the full 10s wait below on every restart.
+if command -v ollama &>/dev/null && ! curl -sf "http://localhost:11434" &>/dev/null; then
     echo "Starting ollama serve..."
     ollama serve &
     OLLAMA_PID=$!
