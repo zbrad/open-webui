@@ -25,6 +25,7 @@
 	export let value: string | null = '';
 	export let selectedValues: string[] = [];
 	export let compareEnabled = false;
+	export let live: boolean = true;
 
 	export let unloadModelHandler: (modelValue: string) => void = () => {};
 	export let pinModelHandler: (modelId: string) => void = () => {};
@@ -51,14 +52,19 @@
 <button
 	role="option"
 	aria-selected={isSelected}
+	aria-disabled={!live}
 	aria-label={$i18n.t('Select {{modelName}} model', { modelName: item.label })}
-	class="group/item flex h-8 w-full cursor-pointer select-none items-center rounded-xl px-2 text-left text-[13px] font-normal text-gray-700 outline-hidden transition-colors duration-75 hover:bg-gray-50/40 dark:text-gray-100 dark:hover:bg-gray-800/40 {index ===
+	title={!live ? $i18n.t('Not reachable') : undefined}
+	class="group/item flex h-8 w-full select-none items-center rounded-xl px-2 text-left text-[13px] font-normal text-gray-700 outline-hidden transition-colors duration-75 dark:text-gray-100 {index ===
 		selectedModelIdx && !compareEnabled
 		? 'bg-gray-50/70 dark:bg-gray-800/60'
-		: ''} {isSelected ? 'bg-gray-50/70 dark:bg-gray-800/60' : ''}"
+		: ''} {isSelected ? 'bg-gray-50/70 dark:bg-gray-800/60' : ''} {live
+		? 'cursor-pointer hover:bg-gray-50/40 dark:hover:bg-gray-800/40'
+		: 'opacity-50 cursor-not-allowed'}"
 	data-arrow-selected={index === selectedModelIdx}
 	data-value={item.value}
 	on:click={() => {
+		if (!live) return;
 		onClick();
 	}}
 >

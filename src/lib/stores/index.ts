@@ -66,6 +66,12 @@ export const selectedFolder = writable(null);
 
 export const models: Writable<Model[]> = writable([]);
 
+// Per-OpenAI-connection reachability (keyed by urlIdx as a string), polled by
+// the chat model picker so it can grey out models whose backing llama.cpp
+// server isn't currently answering. Absent keys should be treated as "live"
+// (not yet checked) rather than "down".
+export const connectionsLiveness: Writable<Record<string, boolean>> = writable({});
+
 export const knowledge: Writable<null | Document[]> = writable(null);
 export const tools = writable(null);
 export const skills = writable(null);

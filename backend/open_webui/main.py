@@ -58,6 +58,66 @@ from open_webui.config import (
     GOOGLE_DRIVE_API_KEY,
     GOOGLE_DRIVE_CLIENT_ID,
     IFRAME_CSP,
+    IMAGE_EDIT_ENGINE,
+    IMAGE_EDIT_MODEL,
+    IMAGE_EDIT_SIZE,
+    IMAGE_GENERATION_ENGINE,
+    IMAGE_GENERATION_MODEL,
+    IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE,
+    IMAGE_SIZE,
+    IMAGE_STEPS,
+    IMAGES_EDIT_COMFYUI_API_KEY,
+    IMAGES_EDIT_COMFYUI_BASE_URL,
+    IMAGES_EDIT_COMFYUI_WORKFLOW,
+    IMAGES_EDIT_COMFYUI_WORKFLOW_NODES,
+    IMAGES_EDIT_GEMINI_API_BASE_URL,
+    IMAGES_EDIT_GEMINI_API_KEY,
+    IMAGES_EDIT_OPENAI_API_BASE_URL,
+    IMAGES_EDIT_OPENAI_API_KEY,
+    IMAGES_EDIT_OPENAI_API_VERSION,
+    IMAGES_GEMINI_API_BASE_URL,
+    IMAGES_GEMINI_API_KEY,
+    IMAGES_GEMINI_ENDPOINT_METHOD,
+    IMAGES_OPENAI_API_BASE_URL,
+    IMAGES_OPENAI_API_KEY,
+    IMAGES_OPENAI_API_PARAMS,
+    IMAGES_OPENAI_API_VERSION,
+    JINA_API_BASE_URL,
+    JINA_API_KEY,
+    JWT_EXPIRES_IN,
+    KAGI_SEARCH_API_KEY,
+    LDAP_APP_DN,
+    LDAP_APP_PASSWORD,
+    LDAP_ATTRIBUTE_FOR_GROUPS,
+    LDAP_ATTRIBUTE_FOR_MAIL,
+    LDAP_ATTRIBUTE_FOR_USERNAME,
+    LDAP_CA_CERT_FILE,
+    LDAP_CIPHERS,
+    LDAP_SEARCH_BASE,
+    LDAP_SEARCH_FILTERS,
+    LDAP_SERVER_HOST,
+    LDAP_SERVER_LABEL,
+    LDAP_SERVER_PORT,
+    LDAP_USE_TLS,
+    LDAP_VALIDATE_CERT,
+    MINERU_API_KEY,
+    MINERU_API_MODE,
+    MINERU_API_TIMEOUT,
+    MINERU_API_URL,
+    MINERU_FILE_EXTENSIONS,
+    MINERU_PARAMS,
+    MISTRAL_OCR_API_BASE_URL,
+    MISTRAL_OCR_API_KEY,
+    MODEL_ORDER_LIST,
+    MODEL_SERVICES_ALIASES_PATH,
+    MODEL_SERVICES_ENABLE,
+    MODEL_SERVICES_LAUNCHER_PATH,
+    MOJEEK_SEARCH_API_KEY,
+    OAUTH_ADMIN_ROLES,
+    OAUTH_ALLOWED_ROLES,
+    OAUTH_AUTO_REDIRECT,
+    OAUTH_EMAIL_CLAIM,
+    OAUTH_PICTURE_CLAIM,
     OAUTH_PROVIDERS,
     ONEDRIVE_CLIENT_ID_BUSINESS,
     ONEDRIVE_CLIENT_ID_PERSONAL,
@@ -155,6 +215,7 @@ from open_webui.routers import (
     images,
     knowledge,
     memories,
+    model_services,
     models,
     notifications,
     notes,
@@ -568,6 +629,16 @@ app.state.TERMINAL_SERVERS = []
 
 ########################################
 #
+# MODEL SERVICES
+#
+########################################
+
+app.state.config.MODEL_SERVICES_ENABLE = MODEL_SERVICES_ENABLE
+app.state.config.MODEL_SERVICES_ALIASES_PATH = MODEL_SERVICES_ALIASES_PATH
+app.state.config.MODEL_SERVICES_LAUNCHER_PATH = MODEL_SERVICES_LAUNCHER_PATH
+
+########################################
+#
 # DIRECT CONNECTIONS
 #
 ########################################
@@ -852,6 +923,9 @@ if ENABLE_ADMIN_ANALYTICS:
     app.include_router(analytics.router, prefix='/api/v1/analytics', tags=['analytics'])
 app.include_router(utils.router, prefix='/api/v1/utils', tags=['utils'])
 app.include_router(terminals.router, prefix='/api/v1/terminals', tags=['terminals'])
+app.include_router(
+    model_services.router, prefix='/api/v1/model-services', tags=['model-services']
+)
 app.include_router(automations.router, prefix='/api/v1/automations', tags=['automations'])
 app.include_router(calendar.router, prefix='/api/v1/calendars', tags=['calendars'])
 
@@ -2143,6 +2217,7 @@ async def get_app_config(request: Request):
         'calendar.enable',
         'automations.enable',
         'notes.enable',
+        'model_services.enable',
         'chat.context_compaction.enable',
         'web.search.enable',
         'web.search.confirmation.enable',
@@ -2220,6 +2295,7 @@ async def get_app_config(request: Request):
                     'enable_calendar': config.get('calendar.enable'),
                     'enable_automations': config.get('automations.enable'),
                     'enable_notes': config.get('notes.enable'),
+                    'enable_model_services': config.get('model_services.enable'),
                     'enable_context_compaction': config.get('chat.context_compaction.enable'),
                     'enable_web_search': config.get('web.search.enable'),
                     'enable_web_search_confirmation': config.get('web.search.confirmation.enable'),
