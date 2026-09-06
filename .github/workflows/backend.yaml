@@ -7,10 +7,10 @@ name: Python CI
 on:
   push:
     branches: [main, dev]
-    paths: ['backend/**', 'pyproject.toml', 'uv.lock', '.github/workflows/backend.yaml']
+    paths: ['backend/**', 'pyproject.toml', '.github/workflows/backend.yaml']
   pull_request:
     branches: [main, dev]
-    paths: ['backend/**', 'pyproject.toml', 'uv.lock', '.github/workflows/backend.yaml']
+    paths: ['backend/**', 'pyproject.toml', '.github/workflows/backend.yaml']
 
 concurrency:
   group: backend-${{ github.ref }}
@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.11', '3.12']
+        python-version: ['3.14']
     steps:
       - uses: actions/checkout@v5
 

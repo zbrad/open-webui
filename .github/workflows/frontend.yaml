@@ -7,10 +7,10 @@ name: Frontend Build
 on:
   push:
     branches: [main, dev]
-    paths-ignore: ['backend/**', 'pyproject.toml', 'uv.lock']
+    paths-ignore: ['backend/**', 'pyproject.toml']
   pull_request:
     branches: [main, dev]
-    paths-ignore: ['backend/**', 'pyproject.toml', 'uv.lock']
+    paths-ignore: ['backend/**', 'pyproject.toml']
 
 concurrency:
   group: frontend-${{ github.ref }}

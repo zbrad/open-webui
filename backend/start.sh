@@ -54,7 +54,7 @@ fi
 
 if [[ "${USE_CUDA_DOCKER,,}" == "true" ]]; then
   echo "CUDA enabled — extending LD_LIBRARY_PATH for torch/cudnn libraries."
-  export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/usr/local/lib/python3.11/site-packages/torch/lib:/usr/local/lib/python3.11/site-packages/nvidia/cudnn/lib"
+  export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/usr/local/lib/python3.14/site-packages/torch/lib:/usr/local/lib/python3.14/site-packages/nvidia/cudnn/lib"
 fi
 
 # ── HuggingFace Space deployment ─────────────────────────────────────────────
