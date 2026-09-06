@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 
 	import {
 		deleteProviderModel,
@@ -8,6 +8,8 @@
 		getErrorMessage,
 		getProviderModelCatalog,
 		loadProviderModel,
+		ProviderModelSseError,
+		streamProviderModelEvents,
 		unloadProviderModel
 	} from '$lib/apis/openai';
 	import { getModels } from '$lib/apis';
@@ -49,6 +51,8 @@
 	export let supportsDelete = false;
 
 	let providerModels: ProviderModel[] = [];
+	let downloadProgress: Record<string, number> = {};
+	let sseController: AbortController | null = null;
 
 	const inputClass =
 		'h-7 w-full rounded-lg border border-gray-100/50 bg-gray-50/40 px-2.5 text-left text-xs text-gray-700 outline-hidden transition-colors focus:border-blue-400 disabled:opacity-50 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:focus:border-blue-500';
@@ -175,11 +179,97 @@
 		modelToDelete = '';
 	};
 
+	// Live download progress via the model-management SSE stream. Only
+	// llama.cpp supports this endpoint (lmstudio's job-id/status polling is
+	// handled entirely by runModelAction/downloadModelHandler above); switching
+	// the selected connection (urlIdx/provider props change on this same
+	// component instance, see ManageMultipleProviderModels.svelte's dropdown)
+	// tears down the old subscription and starts a fresh one.
+	const stopSseTracking = () => {
+		sseController?.abort();
+		sseController = null;
+	};
+
+	const startSseTracking = (targetUrlIdx: number, targetProvider: string) => {
+		stopSseTracking();
+		downloadProgress = {};
+		if (targetProvider !== 'llama.cpp') return;
+
+		const controller = new AbortController();
+		sseController = controller;
+
+		(async () => {
+			while (!controller.signal.aborted) {
+				try {
+					for await (const evt of streamProviderModelEvents(
+						localStorage.token,
+						targetUrlIdx,
+						controller.signal
+					)) {
+						if (controller.signal.aborted) return;
+
+						if (evt.event === 'download_progress') {
+							const progress = evt.data?.progress ?? {};
+							const parts = Object.values(progress) as { done?: number; total?: number }[];
+							const downloaded = parts.reduce((sum, part) => sum + (part?.done ?? 0), 0);
+							const total = parts.reduce((sum, part) => sum + (part?.total ?? 0), 0);
+							if (total) {
+								downloadProgress = {
+									...downloadProgress,
+									[evt.model]: Math.round((downloaded / total) * 1000) / 10
+								};
+							}
+						} else if (evt.event === 'download_finished') {
+							const { [evt.model]: _removed, ...rest } = downloadProgress;
+							downloadProgress = rest;
+							toast.success(
+								$i18n.t(`Model '{{modelName}}' has been successfully downloaded.`, {
+									modelName: evt.model
+								})
+							);
+							await refreshModels();
+							await refreshGlobalModels();
+						} else if (evt.event === 'download_failed') {
+							const { [evt.model]: _removed, ...rest } = downloadProgress;
+							downloadProgress = rest;
+							toast.error(
+								$i18n.t(`Download of '{{modelName}}' failed.`, { modelName: evt.model })
+							);
+							await refreshModels();
+						} else if (
+							['status_change', 'model_status', 'model_remove', 'models_reload'].includes(
+								evt.event
+							)
+						) {
+							await refreshModels();
+						}
+					}
+				} catch (error) {
+					if (controller.signal.aborted) return;
+					if (error instanceof ProviderModelSseError && error.status < 500) {
+						// This connection doesn't support the SSE endpoint at all (e.g.
+						// a llama.cpp instance running in single-model, non-router
+						// mode) -- retrying won't help, stop trying.
+						return;
+					}
+					// Stream dropped unexpectedly -- reconnect below rather than
+					// treating it as terminal (llama.cpp keeps broadcasting to
+					// new subscribers).
+				}
+
+				if (controller.signal.aborted) return;
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+			}
+		})();
+	};
+
 	$: if (urlIdx !== undefined) {
 		refreshModels();
+		startSseTracking(urlIdx, provider);
 	}
 
 	onMount(refreshModels);
+	onDestroy(stopSseTracking);
 </script>
 
 <ConfirmDialog
@@ -248,6 +338,11 @@
 							<span class="rounded-full px-1.5 py-0.5 text-[0.65rem] {getStatusClass(status)}">
 								{status}
 							</span>
+							{#if downloadProgress[modelId] !== undefined}
+								<span class="text-[0.65rem] text-gray-400">
+									{downloadProgress[modelId]}%
+								</span>
+							{/if}
 						</div>
 					</div>
 

@@ -1,4 +1,5 @@
 import { OPENAI_API_BASE_URL, WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
+import { EventSourceParserStream } from 'eventsource-parser/stream';
 
 export const getErrorMessage = (err: any, fallback = 'Server connection failed') => {
 	const detail = err?.detail;
@@ -232,6 +233,77 @@ export const getProviderModelDownloadStatus = async (
 
 	return res;
 };
+
+export type ProviderModelEvent = {
+	model: string;
+	event: string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	data?: any;
+};
+
+// Thrown by streamProviderModelEvents on a non-2xx response, carrying the
+// HTTP status so callers can distinguish "this connection doesn't support
+// SSE at all" (4xx -- not router mode, wrong provider, etc.; don't keep
+// retrying) from a transient failure worth reconnecting for.
+export class ProviderModelSseError extends Error {
+	status: number;
+	constructor(status: number, message: string) {
+		super(message);
+		this.name = 'ProviderModelSseError';
+		this.status = status;
+	}
+}
+
+// Consumes the llama.cpp model-management SSE stream (GET /models/{urlIdx}/sse),
+// yielding one parsed event per `data: {...}` line. Each event is shaped
+// { model, event, data? } -- see llama.cpp's server_models::notify_sse (events
+// include model_status, status_change, download_progress, download_finished,
+// download_failed, model_remove, models_reload). Used to track real download
+// progress instead of assuming the fire-and-forget POST /models/{urlIdx}/download
+// means "done" the instant it returns.
+export async function* streamProviderModelEvents(
+	token: string,
+	urlIdx: number,
+	signal?: AbortSignal
+): AsyncGenerator<ProviderModelEvent> {
+	const res = await fetch(`${OPENAI_API_BASE_URL}/models/${urlIdx}/sse`, {
+		signal,
+		method: 'GET',
+		headers: {
+			Accept: 'text/event-stream',
+			Authorization: `Bearer ${token}`
+		}
+	});
+
+	if (!res.ok || !res.body) {
+		const detail = await res
+			.json()
+			.then((body) => getErrorMessage(body))
+			.catch(() => `HTTP ${res.status}`);
+		throw new ProviderModelSseError(res.status, detail);
+	}
+
+	const reader = res.body
+		.pipeThrough(new TextDecoderStream())
+		.pipeThrough(new EventSourceParserStream())
+		.getReader();
+
+	try {
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) return;
+			if (!value?.data) continue;
+
+			try {
+				yield JSON.parse(value.data);
+			} catch (e) {
+				console.error('Error parsing provider model SSE event:', e);
+			}
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
 
 export const loadProviderModel = async (token: string, urlIdx: number, model: string) => {
 	let error = null;

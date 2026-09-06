@@ -19,7 +19,9 @@
 		downloadProviderModel,
 		getErrorMessage,
 		getOpenAIConfig,
-		getProviderModelDownloadStatus
+		getProviderModelDownloadStatus,
+		ProviderModelSseError,
+		streamProviderModelEvents
 	} from '$lib/apis/openai';
 
 	import {
@@ -502,6 +504,83 @@
 		await onSetDefault();
 	};
 
+	// llama.cpp's POST /models/{urlIdx}/download is fire-and-forget (no job_id,
+	// unlike lmstudio) -- real progress only comes via the model-management SSE
+	// stream (GET /models/{urlIdx}/sse), broadcasting { model, event, data }
+	// events to every connected client. Reconnects on stream drop (e.g. the
+	// backend's own proxy-to-upstream timeout) rather than treating a closed
+	// stream as terminal, since llama.cpp keeps broadcasting to new subscribers.
+	const trackLlamaCppDownload = async (connection, model, poolKey, controller) => {
+		while (!controller.signal.aborted) {
+			let sawTerminalEvent = false;
+
+			try {
+				for await (const evt of streamProviderModelEvents(
+					localStorage.token,
+					connection.idx,
+					controller.signal
+				)) {
+					if (evt?.model !== model) continue;
+
+					if (evt.event === 'download_progress') {
+						const progress = evt.data?.progress ?? {};
+						const totals = Object.values(progress) as { done?: number; total?: number }[];
+						const downloaded = totals.reduce((sum, part) => sum + (part?.done ?? 0), 0);
+						const total = totals.reduce((sum, part) => sum + (part?.total ?? 0), 0);
+						const pullProgress = total ? Math.round((downloaded / total) * 1000) / 10 : undefined;
+
+						MODEL_DOWNLOAD_POOL.set({
+							...$MODEL_DOWNLOAD_POOL,
+							[poolKey]: {
+								...$MODEL_DOWNLOAD_POOL[poolKey],
+								...(pullProgress !== undefined ? { pullProgress } : {})
+							}
+						});
+					} else if (evt.event === 'download_finished') {
+						MODEL_DOWNLOAD_POOL.set({
+							...$MODEL_DOWNLOAD_POOL,
+							[poolKey]: {
+								...$MODEL_DOWNLOAD_POOL[poolKey],
+								pullProgress: 100,
+								done: true
+							}
+						});
+						sawTerminalEvent = true;
+						return;
+					} else if (evt.event === 'download_failed') {
+						sawTerminalEvent = true;
+						throw new Error(
+							$i18n.t(`Download of '{{modelName}}' failed.`, { modelName: model })
+						);
+					}
+				}
+			} catch (error) {
+				if (controller.signal.aborted) return;
+				if (sawTerminalEvent) throw error;
+				if (error instanceof ProviderModelSseError && error.status < 500) {
+					// This connection doesn't support the SSE endpoint at all (e.g.
+					// a llama.cpp instance running in single-model, non-router mode)
+					// -- retrying won't help. Fall back to instant-complete, same as
+					// providers with no progress mechanism at all.
+					MODEL_DOWNLOAD_POOL.set({
+						...$MODEL_DOWNLOAD_POOL,
+						[poolKey]: {
+							...$MODEL_DOWNLOAD_POOL[poolKey],
+							pullProgress: 100,
+							done: true
+						}
+					});
+					return;
+				}
+				// Stream dropped unexpectedly (e.g. an idle/total timeout on the
+				// backend's proxy connection) -- reconnect and keep tracking.
+			}
+
+			if (controller.signal.aborted || sawTerminalEvent) return;
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		}
+	};
+
 	const downloadProviderModelHandler = async (connection) => {
 		const model = sanitizedSearchValue;
 		const poolKey = getProviderPoolKey(connection, model);
@@ -591,7 +670,13 @@
 						throw status?.error ?? 'Download failed';
 					}
 				}
+			} else if (connection.provider === 'llama.cpp' && !$MODEL_DOWNLOAD_POOL[poolKey]?.done) {
+				await trackLlamaCppDownload(connection, model, poolKey, controller);
 			} else if (!$MODEL_DOWNLOAD_POOL[poolKey]?.done) {
+				// No job_id and not a provider with a known progress mechanism --
+				// the fire-and-forget POST already returned successfully, so treat
+				// it as complete (this is the pre-existing behavior for any future
+				// management provider that doesn't yet report progress either way).
 				MODEL_DOWNLOAD_POOL.set({
 					...$MODEL_DOWNLOAD_POOL,
 					[poolKey]: {
