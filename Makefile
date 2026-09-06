@@ -31,3 +31,37 @@ update:
 	$(DOCKER_COMPOSE) up --build -d
 	$(DOCKER_COMPOSE) start
 
+# ── Local (venv, no Docker) targets ───────────────────────────────────────────
+
+local-setup:
+	deploy/local/setup.sh --mode local
+
+local-setup-service:
+	deploy/local/setup.sh --mode service
+
+local-start:
+	deploy/local/run-local.sh
+
+local-dev:
+	deploy/local/dev.sh
+
+# ── systemd --user service targets ────────────────────────────────────────────
+
+service-install:
+	deploy/service/deploy.sh
+
+service-start:
+	systemctl --user start open-webui
+
+service-stop:
+	systemctl --user stop open-webui
+
+service-restart:
+	systemctl --user restart open-webui
+
+service-status:
+	systemctl --user status open-webui
+
+service-logs:
+	journalctl --user -u open-webui -f
+
