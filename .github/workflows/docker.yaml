@@ -45,10 +45,6 @@ jobs:
               USE_CUDA=true
               USE_CUDA_VER=cu126
             free_disk: true
-          - name: ollama
-            suffix: "-ollama"
-            build_args: "USE_OLLAMA=true"
-            free_disk: false
           - name: slim
             suffix: "-slim"
             build_args: "USE_SLIM=true"
@@ -169,8 +165,6 @@ jobs:
             suffix: "-cuda"
           - name: cuda126
             suffix: "-cuda126"
-          - name: ollama
-            suffix: "-ollama"
           - name: slim
             suffix: "-slim"
 
@@ -321,8 +315,6 @@ jobs:
             suffix: "-cuda"
           - variant: cuda126
             suffix: "-cuda126"
-          - variant: ollama
-            suffix: "-ollama"
           - variant: slim
             suffix: "-slim"
 

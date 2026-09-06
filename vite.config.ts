@@ -32,10 +32,6 @@ export default defineConfig({
 				changeOrigin: true,
 				ws: true
 			},
-			'/ollama': {
-				target: backendTarget,
-				changeOrigin: true
-			},
 			'/openai': {
 				target: backendTarget,
 				changeOrigin: true

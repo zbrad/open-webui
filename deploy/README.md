@@ -15,7 +15,7 @@ script) is tracked separately and not part of this pass.
 | Python | matches `pyproject.toml`'s `requires-python` (check before assuming — this has changed before) | Backend runtime |
 | Node.js | matches `package.json`'s `engines.node` (check before assuming — same caveat) | Frontend build |
 | npm | ≥ 6.0 | Frontend dependencies |
-| Ollama | any | LLM inference (local modes) |
+| An OpenAI-compatible server (llama.cpp, LMStudio, etc.) | any | LLM inference — configured as a connection, not bundled/managed by these scripts |
 
 ---
 
@@ -86,7 +86,6 @@ Settings collected:
 |---------|---------|-------|
 | `PORT` | `3000` | |
 | `HOST` | `0.0.0.0` | |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | |
 | `UVICORN_WORKERS` | `1` | |
 | `CORS_ALLOW_ORIGIN` | `*` (service) / `http://localhost:<PORT>` (local) | |
 | `WEBUI_SECRET_KEY` | auto-generated | Signs all JWTs — changing it invalidates active sessions |
@@ -101,7 +100,7 @@ Keys not listed above that exist in the env file are preserved unchanged on re-r
 
 ## Run — Local (venv)
 
-Starts uvicorn directly from the repo `.venv`. Manages the Ollama process and secret key
+Starts uvicorn directly from the repo `.venv`. Manages the secret key
 automatically if `setup.sh` has not been run.
 
 ```bash
@@ -119,7 +118,7 @@ deploy/local/dev.sh
 Override any setting inline:
 
 ```bash
-PORT=8080 OLLAMA_BASE_URL=http://other-host:11434 deploy/local/run-local.sh
+PORT=8080 deploy/local/run-local.sh
 ```
 
 ---

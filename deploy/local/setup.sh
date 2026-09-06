@@ -14,7 +14,7 @@ LOCAL_ENV="${REPO_ROOT}/.env.local"
 SERVICE_ENV="${HOME}/.config/open-webui/env"
 
 # Keys this script manages — anything else in the existing file is preserved.
-MANAGED_KEYS="PORT|HOST|OLLAMA_BASE_URL|UVICORN_WORKERS|CORS_ALLOW_ORIGIN|\
+MANAGED_KEYS="PORT|HOST|UVICORN_WORKERS|CORS_ALLOW_ORIGIN|\
 WEBUI_SECRET_KEY|OPENAI_API_KEY|OPENAI_API_BASE_URL|\
 WEBUI_ADMIN_EMAIL|WEBUI_ADMIN_PASSWORD|WEBUI_ADMIN_NAME|WEBUI_DEFAULT_API_KEY"
 
@@ -100,7 +100,6 @@ esac
 
 e_port=$(read_env "$ENV_FILE" PORT)
 e_host=$(read_env "$ENV_FILE" HOST)
-e_ollama=$(read_env "$ENV_FILE" OLLAMA_BASE_URL)
 e_workers=$(read_env "$ENV_FILE" UVICORN_WORKERS)
 e_cors=$(read_env "$ENV_FILE" CORS_ALLOW_ORIGIN)
 e_secret=$(read_env "$ENV_FILE" WEBUI_SECRET_KEY)
@@ -121,7 +120,6 @@ printf "%bTarget: %b%s\n" "$dim" "$reset" "$ENV_FILE"
 header "Server"
 ask "Port"             "${e_port:-3000}"                        o_port
 ask "Host"             "${e_host:-0.0.0.0}"                    o_host
-ask "Ollama base URL"  "${e_ollama:-http://localhost:11434}"    o_ollama
 ask "Uvicorn workers"  "${e_workers:-1}"                        o_workers
 default_cors="$([[ "$MODE" == "service" ]] && echo "*" || echo "http://localhost:${o_port}")"
 ask "CORS allow origin" "${e_cors:-${default_cors}}" o_cors
@@ -184,7 +182,6 @@ echo
 printf "%b%s%b\n" "$bold" "Configuration to write:" "$reset"
 printf "  %-28s %s\n" "PORT"              "$o_port"
 printf "  %-28s %s\n" "HOST"              "$o_host"
-printf "  %-28s %s\n" "OLLAMA_BASE_URL"   "$o_ollama"
 printf "  %-28s %s\n" "UVICORN_WORKERS"   "$o_workers"
 printf "  %-28s %s\n" "CORS_ALLOW_ORIGIN" "$o_cors"
 printf "  %-28s %s\n" "WEBUI_SECRET_KEY"  "<set>"
@@ -217,7 +214,6 @@ cat > "$ENV_FILE" <<EOF
 
 PORT=${o_port}
 HOST=${o_host}
-OLLAMA_BASE_URL=${o_ollama}
 UVICORN_WORKERS=${o_workers}
 CORS_ALLOW_ORIGIN=${o_cors}
 
