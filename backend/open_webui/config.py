@@ -4,8 +4,6 @@ import base64
 import logging
 import os
 import shutil
-import socket
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
@@ -227,87 +225,6 @@ if CUSTOM_NAME:
 ####################################
 
 ENABLE_DIRECT_CONNECTIONS = os.getenv('ENABLE_DIRECT_CONNECTIONS', 'False').lower() == 'true'
-
-####################################
-# OLLAMA_BASE_URL
-####################################
-
-ENABLE_OLLAMA_API = os.getenv('ENABLE_OLLAMA_API', 'True').lower() == 'true'
-
-OLLAMA_API_BASE_URL = os.getenv('OLLAMA_API_BASE_URL', 'http://localhost:11434/api')
-
-OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', '')
-if OLLAMA_BASE_URL:
-    # Remove trailing slash
-    OLLAMA_BASE_URL = OLLAMA_BASE_URL[:-1] if OLLAMA_BASE_URL.endswith('/') else OLLAMA_BASE_URL
-
-
-K8S_FLAG = os.getenv('K8S_FLAG', '')
-USE_OLLAMA_DOCKER = os.getenv('USE_OLLAMA_DOCKER', 'false')
-
-if OLLAMA_BASE_URL == '' and OLLAMA_API_BASE_URL != '':
-    OLLAMA_BASE_URL = OLLAMA_API_BASE_URL[:-4] if OLLAMA_API_BASE_URL.endswith('/api') else OLLAMA_API_BASE_URL
-
-if ENV == 'prod':
-    if OLLAMA_BASE_URL == '/ollama' and not K8S_FLAG:
-        if USE_OLLAMA_DOCKER.lower() == 'true':
-            # if you use all-in-one docker container (Open WebUI + Ollama)
-            # with the docker build arg USE_OLLAMA=true (--build-arg="USE_OLLAMA=true") this only works with http://localhost:11434
-            OLLAMA_BASE_URL = 'http://localhost:11434'
-        else:
-            OLLAMA_BASE_URL = 'http://host.docker.internal:11434'
-    elif K8S_FLAG:
-        OLLAMA_BASE_URL = 'http://ollama-service.open-webui.svc.cluster.local:11434'
-
-
-def _resolve_ollama_base_url(url: str) -> str:
-    """If the default Ollama port (11434) is unreachable, try the fallback port (12434)."""
-
-    def reachable(host: str, port: int) -> bool:
-        try:
-            with socket.create_connection((host, port), timeout=1.0):
-                return True
-        except (OSError, TimeoutError):
-            return False
-
-    host = urlparse(url).hostname or 'localhost'
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        default = pool.submit(reachable, host, 11434)
-        fallback = pool.submit(reachable, host, 12434)
-
-    if not default.result() and fallback.result():
-        url = url.replace(':11434', ':12434')
-        log.info('Ollama port 11434 unreachable on %s, falling back to 12434', host)
-    elif not default.result():
-        log.info('Ollama ports 11434 and 12434 both unreachable on %s', host)
-
-    return url
-
-
-# Auto-resolve Ollama port when no explicit URL was provided by the user.
-# The Dockerfile default is "/ollama" which the block above rewrites to :11434.
-if os.getenv('OLLAMA_BASE_URL', '') in ('', '/ollama') and not os.getenv('OLLAMA_BASE_URLS', ''):
-    OLLAMA_BASE_URL = _resolve_ollama_base_url(OLLAMA_BASE_URL)
-
-
-OLLAMA_BASE_URLS = os.getenv('OLLAMA_BASE_URLS', '')
-OLLAMA_BASE_URLS = OLLAMA_BASE_URLS if OLLAMA_BASE_URLS != '' else OLLAMA_BASE_URL
-
-OLLAMA_BASE_URLS = [url.strip() for url in OLLAMA_BASE_URLS.split(';')]
-OLLAMA_BASE_URLS = OLLAMA_BASE_URLS
-
-OLLAMA_API_CONFIGS = {}
-_ollama_api_configs = os.getenv('OLLAMA_API_CONFIGS', '')
-if _ollama_api_configs:
-    try:
-        parsed = JSONCodec.loads(_ollama_api_configs)
-        if isinstance(parsed, dict):
-            OLLAMA_API_CONFIGS = parsed
-        else:
-            log.warning('OLLAMA_API_CONFIGS must be a JSON object, ignoring')
-    except (JSONCodec.JSONDecodeError, TypeError):
-        log.warning('OLLAMA_API_CONFIGS is not valid JSON, ignoring')
 
 ####################################
 # OPENAI_API
@@ -1096,11 +1013,6 @@ RAG_AZURE_OPENAI_BASE_URL = os.getenv('RAG_AZURE_OPENAI_BASE_URL', '')
 RAG_AZURE_OPENAI_API_KEY = os.getenv('RAG_AZURE_OPENAI_API_KEY', '')
 RAG_AZURE_OPENAI_API_VERSION = os.getenv('RAG_AZURE_OPENAI_API_VERSION', '')
 
-RAG_OLLAMA_BASE_URL = os.getenv('RAG_OLLAMA_BASE_URL', OLLAMA_BASE_URL)
-
-RAG_OLLAMA_API_KEY = os.getenv('RAG_OLLAMA_API_KEY', '')
-
-
 ENABLE_LOCAL_WEB_FETCH = (
     os.getenv(
         'ENABLE_LOCAL_WEB_FETCH',
@@ -1205,8 +1117,6 @@ ENABLE_WEB_LOADER_SSL_VERIFICATION = os.getenv('ENABLE_WEB_LOADER_SSL_VERIFICATI
 
 WEB_SEARCH_TRUST_ENV = os.getenv('WEB_SEARCH_TRUST_ENV', 'True').lower() == 'true'
 
-
-OLLAMA_CLOUD_WEB_SEARCH_API_KEY = os.getenv('OLLAMA_CLOUD_API_KEY', '')
 
 SEARXNG_QUERY_URL = os.getenv('SEARXNG_QUERY_URL', '')
 OPENSERP_BASE_URL = os.getenv('OPENSERP_BASE_URL', 'http://localhost:7000')
@@ -2834,9 +2744,6 @@ LDAP_ATTRIBUTE_FOR_GROUPS = os.getenv('LDAP_ATTRIBUTE_FOR_GROUPS', 'memberOf')
 
 DEFAULT_CONFIG = {
     'direct.enable': ENABLE_DIRECT_CONNECTIONS,
-    'ollama.enable': ENABLE_OLLAMA_API,
-    'ollama.base_urls': OLLAMA_BASE_URLS,
-    'ollama.api_configs': OLLAMA_API_CONFIGS,
     'openai.enable': ENABLE_OPENAI_API,
     'openai.api_keys': OPENAI_API_KEYS,
     'openai.api_base_urls': OPENAI_API_BASE_URLS,
@@ -2946,8 +2853,6 @@ DEFAULT_CONFIG = {
     'rag.azure_openai.base_url': RAG_AZURE_OPENAI_BASE_URL,
     'rag.azure_openai.api_key': RAG_AZURE_OPENAI_API_KEY,
     'rag.azure_openai.api_version': RAG_AZURE_OPENAI_API_VERSION,
-    'rag.ollama.base_url': RAG_OLLAMA_BASE_URL,
-    'rag.ollama.api_key': RAG_OLLAMA_API_KEY,
     'rag.youtube_loader_language': YOUTUBE_LOADER_LANGUAGE,
     'rag.youtube_loader_proxy_url': YOUTUBE_LOADER_PROXY_URL,
     'web.search.enable': ENABLE_WEB_SEARCH,
@@ -2965,7 +2870,6 @@ DEFAULT_CONFIG = {
     'web.loader.timeout': WEB_LOADER_TIMEOUT,
     'web.loader.ssl_verification': ENABLE_WEB_LOADER_SSL_VERIFICATION,
     'web.search.trust_env': WEB_SEARCH_TRUST_ENV,
-    'web.search.ollama_cloud_api_key': OLLAMA_CLOUD_WEB_SEARCH_API_KEY,
     'web.search.searxng_query_url': SEARXNG_QUERY_URL,
     'web.search.openserp_base_url': OPENSERP_BASE_URL,
     'web.search.searxng_language': SEARXNG_LANGUAGE,
