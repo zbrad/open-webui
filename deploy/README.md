@@ -41,6 +41,29 @@ To rebuild the frontend only (e.g. after a `git pull`):
 .venv/bin/pip install -e backend --force-reinstall
 ```
 
+Or directly with npm (what the above does under the hood):
+
+```bash
+npm ci                                          # after any branch switch / package-lock.json change
+NODE_OPTIONS=--max-old-space-size=8192 npm run build
+```
+
+Two gotchas hit repeatedly on this box, both silent otherwise:
+- **`node_modules` doesn't follow a branch switch.** It's gitignored, so
+  checking out a branch with a different `package-lock.json` leaves a
+  mismatched `node_modules` in place — `npm run build` then fails fast on
+  a missing/wrong-version package (or, worse, quietly builds against
+  stale source if the mismatch doesn't happen to break resolution).
+  Always `npm ci` after switching branches, not just once.
+- **The production build needs a larger V8 heap than Node's default** on
+  this machine — a plain `npm run build` dies partway through with
+  `JavaScript heap out of memory` even though the box has memory free
+  (the default old-space limit is fixed, not sized off available RAM).
+  `NODE_OPTIONS=--max-old-space-size=8192` fixes it.
+- Also confirm `node --version` satisfies `package.json`'s `engines.node`
+  range first (`nvm use 22` if not — see `deploy/testing/README.md` for
+  why this matters for the browser smoke test specifically).
+
 ---
 
 ## Configure

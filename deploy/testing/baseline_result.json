@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "checks": {
+    "pages_loaded": [
+      "/",
+      "/admin/settings/connections",
+      "/admin/settings/models"
+    ],
+    "model_count": 2,
+    "model_id": "nemotron-3-super (remote)",
+    "chat_response": "PONG"
+  }
+}
