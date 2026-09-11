@@ -2026,7 +2026,7 @@ MODEL_SERVICES_ALIASES_PATH = os.getenv(
 )
 
 MODEL_SERVICES_LAUNCHER_PATH = os.getenv(
-    'MODEL_SERVICES_LAUNCHER_PATH', os.path.expanduser('~/gh/llama.cpp/tuned/nemo.sh')
+    'MODEL_SERVICES_LAUNCHER_PATH', os.path.expanduser('~/gh/llama.cpp/tuned/llmsrv.sh')
 )
 
 ENABLE_COMMUNITY_SHARING = os.getenv('ENABLE_COMMUNITY_SHARING', 'True').lower() == 'true'

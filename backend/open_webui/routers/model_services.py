@@ -72,7 +72,7 @@ def _load_catalog(aliases_path: str) -> dict:
         catalog[name] = {
             'name': name,
             'alias': alias,
-            'unit': f'nemo-{alias}.service',
+            'unit': f'llmsrv-{alias}.service',
             'port': entry.get('port'),
             'path': resolved_path,
             'size_bytes': os.path.getsize(resolved_path) if resolved_path else None,
