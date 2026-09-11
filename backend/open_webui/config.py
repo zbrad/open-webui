@@ -2017,6 +2017,18 @@ BYPASS_ADMIN_ACCESS_CONTROL = (
 
 ENABLE_ADMIN_ANALYTICS = os.getenv('ENABLE_ADMIN_ANALYTICS', 'True').lower() == 'true'
 
+# Admin "Model Services" page: read-only view + start/stop over the
+# tuned-builds launcher's own model catalog. Off by default -- opt-in.
+MODEL_SERVICES_ENABLE = os.getenv('MODEL_SERVICES_ENABLE', 'False').lower() == 'true'
+
+MODEL_SERVICES_ALIASES_PATH = os.getenv(
+    'MODEL_SERVICES_ALIASES_PATH', os.path.expanduser('~/gh/llama.cpp/models/aliases.json')
+)
+
+MODEL_SERVICES_LAUNCHER_PATH = os.getenv(
+    'MODEL_SERVICES_LAUNCHER_PATH', os.path.expanduser('~/gh/llama.cpp/tuned/nemo.sh')
+)
+
 ENABLE_COMMUNITY_SHARING = os.getenv('ENABLE_COMMUNITY_SHARING', 'True').lower() == 'true'
 
 ENABLE_MESSAGE_RATING = os.getenv('ENABLE_MESSAGE_RATING', 'True').lower() == 'true'

@@ -42,6 +42,7 @@
 	import AdminAuthentication from '$lib/components/admin/Settings/Authentication.svelte';
 	import AdminConnections from '$lib/components/admin/Settings/Connections.svelte';
 	import AdminModels from '$lib/components/admin/Settings/Models.svelte';
+	import AdminModelServices from '$lib/components/admin/Settings/ModelServices.svelte';
 	import AdminSubagents from '$lib/components/admin/Settings/Subagents.svelte';
 	import AdminEvaluations from '$lib/components/admin/Settings/Evaluations.svelte';
 	import AdminAnalytics from '$lib/components/admin/Analytics.svelte';
@@ -154,6 +155,7 @@
 		'admin:authentication': 'System',
 		'admin:connections': 'AI',
 		'admin:models': 'AI',
+		'admin:model-services': 'AI',
 		'admin:subagents': 'AI',
 		'admin:evaluations': 'Quality',
 		'admin:analytics': 'Quality',
@@ -725,6 +727,19 @@
 			]
 		},
 		{
+			id: 'admin:model-services',
+			title: 'Model Services',
+			keywords: [
+				'model services',
+				'llama.cpp',
+				'nemo',
+				'systemd',
+				'start',
+				'stop',
+				'memory'
+			]
+		},
+		{
 			id: 'admin:subagents',
 			title: 'Sub-agents',
 			keywords: ['sub-agents', 'subagents', 'delegation', 'background', 'agents']
@@ -1274,6 +1289,8 @@
 				/>
 			{:else if selectedTab === 'admin:models'}
 				<AdminModels bind:tabState />
+			{:else if selectedTab === 'admin:model-services'}
+				<AdminModelServices />
 			{:else if selectedTab === 'admin:subagents'}
 				<AdminSubagents />
 			{:else if selectedTab === 'admin:evaluations'}
