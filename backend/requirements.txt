@@ -63,7 +63,7 @@ opensearch-py
 transformers
 sentence-transformers
 accelerate
-pyarrow<21 # keep below 21 for rpi compatibility #15897
+pyarrow # unpinned: <21 (upstream's rpi pin, #15897) has no cp314 aarch64 wheel; this fork targets Python 3.14 on GB10
 einops
 
 ftfy
@@ -128,7 +128,7 @@ elasticsearch
 pinecone
 oracledb
 
-av==14.0.1 # Caution: pinned due to FATAL FIPS SELFTEST FAILURE on other versions, see https://github.com/open-webui/open-webui/discussions/15720
+av>=14.0.1 # upstream pins ==14.0.1 for a FIPS selftest failure (discussions/15720); 14.0.1 has no cp314 aarch64 wheel and these hosts do not run FIPS mode
 
 colbert-ai
 

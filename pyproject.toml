@@ -72,7 +72,7 @@ dependencies = [
     "transformers",
     "sentence-transformers",
     "accelerate",
-    "pyarrow<21", # keep below 21 for rpi compatibility #15897
+    "pyarrow", # unpinned: <21 (upstream's rpi pin, #15897) has no cp314 aarch64 wheel; this fork targets Python 3.14 on GB10
     "einops",
 
     "ftfy",
