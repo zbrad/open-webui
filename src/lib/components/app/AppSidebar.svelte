@@ -1,13 +1,16 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import { WEBUI_BASE_URL } from '$lib/constants';
+
+	const i18n: any = getContext('i18n');
 
 	let selected = '';
 </script>
 
 <nav
-	aria-label="App navigation"
+	aria-label={$i18n.t('App navigation')}
 	class="min-w-[4.5rem] bg-gray-50 dark:bg-gray-950 flex gap-2.5 flex-col pt-8"
 >
 	<div class="flex justify-center relative">
@@ -17,9 +20,9 @@
 			</div>
 		{/if}
 
-		<Tooltip content="Home" placement="right">
+		<Tooltip content={$i18n.t('Home')} placement="right">
 			<button
-				aria-label="Home"
+				aria-label={$i18n.t('Home')}
 				class=" cursor-pointer {selected === 'home' ? 'rounded-2xl' : 'rounded-full'}"
 				on:click={() => {
 					selected = 'home';
@@ -35,7 +38,7 @@
 				<img
 					src="{WEBUI_BASE_URL}/static/splash.png"
 					class="size-11 dark:invert p-0.5"
-					alt="logo"
+					alt=""
 					draggable="false"
 				/>
 			</button>
@@ -51,7 +54,7 @@
 			</div>
 		{/if}
 		<button
-			aria-label="Chat"
+			aria-label={$i18n.t('Chat')}
 			class=" cursor-pointer bg-transparent"
 			on:click={() => {
 				selected = '';
@@ -63,7 +66,7 @@
 			<img
 				src="{WEBUI_BASE_URL}/static/favicon.png"
 				class="size-10 {selected === '' ? 'rounded-2xl' : 'rounded-full'}"
-				alt="logo"
+				alt=""
 				draggable="false"
 			/>
 		</button>

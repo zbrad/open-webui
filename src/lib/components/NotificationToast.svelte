@@ -4,8 +4,10 @@
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
 
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, getContext, onMount } from 'svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
+
+	const i18n: any = getContext('i18n');
 
 	const dispatch = createEventDispatcher();
 
@@ -103,7 +105,7 @@
 		bind:this={closeButtonElement}
 		class="absolute -top-0.5 -left-0.5 p-0.5 rounded-full opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-opacity z-10"
 		on:click|stopPropagation={closeHandler}
-		aria-label="Dismiss notification"
+		aria-label={$i18n.t('Dismiss notification')}
 	>
 		<XMark className="size-3" />
 	</button>
@@ -112,7 +114,7 @@
 		<!-- LICENSE covers this Open WebUI notification logo.
 		Do not alter, remove, obscure, or replace it except as LICENSE permits:
 		https://docs.openwebui.com/license. -->
-		<img src="{WEBUI_BASE_URL}/static/favicon.png" alt="favicon" class="size-6 rounded-full" />
+		<img src="{WEBUI_BASE_URL}/static/favicon.png" alt="" class="size-6 rounded-full" />
 	</div>
 
 	<div>

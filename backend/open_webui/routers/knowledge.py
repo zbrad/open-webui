@@ -14,7 +14,6 @@ from fastapi.responses import StreamingResponse
 from open_webui.config import (
     BYPASS_ADMIN_ACCESS_CONTROL,
     ENABLE_KNOWLEDGE_FILE_RETENTION,
-    RAG_EMBEDDING_CONTENT_PREFIX,
 )
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.events import EVENTS, publish_event
@@ -43,7 +42,7 @@ from open_webui.routers.retrieval import (
     process_files_batch,
 )
 from open_webui.storage.provider import Storage
-from open_webui.utils.access_control import filter_allowed_access_grants, has_permission
+from open_webui.utils.access_control import filter_allowed_access_grants, has_permission, validate_access_grants
 from open_webui.utils.access_control.files import has_access_to_file
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.json_codec import JSONCodec
@@ -98,7 +97,9 @@ async def embed_knowledge_base_metadata(
     """Generate and store embedding for knowledge base."""
     try:
         content = f'{name}\n\n{description}' if description else name
-        embedding = await request.app.state.EMBEDDING_FUNCTION(content, prefix=RAG_EMBEDDING_CONTENT_PREFIX)
+        embedding = await request.app.state.EMBEDDING_FUNCTION(
+            content, prefix=await Config.get('rag.embedding_content_prefix')
+        )
         await ASYNC_VECTOR_DB_CLIENT.upsert(
             collection_name=KNOWLEDGE_BASES_COLLECTION,
             items=[
@@ -151,6 +152,24 @@ def external_knowledge_error():
     )
 
 
+async def _verify_directory_in_knowledge(
+    id: str,
+    directory_id: str | None,
+    db: AsyncSession,
+    detail: str = ERROR_MESSAGES.NOT_FOUND,
+):
+    """Verify a caller-supplied directory belongs to the knowledge base in the URL. Unset means the root level."""
+    if not directory_id:
+        return None
+
+    directory = await Knowledges.get_directory_by_id(directory_id, db=db)
+    if not directory or directory.knowledge_id != id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=detail,
+        )
+
+
 @router.get('/', response_model=KnowledgeAccessListResponse)
 async def get_knowledge_bases(
     page: int | None = 1,
@@ -162,7 +181,7 @@ async def get_knowledge_bases(
     skip = (page - 1) * limit
 
     filter = {}
-    groups = await Groups.get_groups_by_member_id(user.id, db=db)
+    groups = await Groups.get_groups_by_member_id(user.id, db=db, include_inherited=True)
     user_group_ids = {group.id for group in groups}
 
     if not user.role == 'admin' or not BYPASS_ADMIN_ACCESS_CONTROL:
@@ -227,7 +246,7 @@ async def search_knowledge_bases(
     if direction in {'asc', 'desc'}:
         filter['direction'] = direction
 
-    groups = await Groups.get_groups_by_member_id(user.id, db=db)
+    groups = await Groups.get_groups_by_member_id(user.id, db=db, include_inherited=True)
     user_group_ids = {group.id for group in groups}
 
     if not user.role == 'admin' or not BYPASS_ADMIN_ACCESS_CONTROL:
@@ -283,7 +302,7 @@ async def search_knowledge_files(
     if include_content:
         filter['include_content'] = True
 
-    groups = await Groups.get_groups_by_member_id(user.id, db=db)
+    groups = await Groups.get_groups_by_member_id(user.id, db=db, include_inherited=True)
     if groups:
         filter['group_ids'] = [group.id for group in groups]
 
@@ -320,7 +339,7 @@ async def create_new_knowledge(
         user.id,
         user.role,
         form_data.access_grants,
-        'sharing.public_knowledge',
+        resource_type='knowledge',
     )
 
     knowledge = await Knowledges.insert_new_knowledge(user.id, form_data)
@@ -892,7 +911,7 @@ async def create_external_knowledge(
         user.id,
         user.role,
         form_data.access_grants,
-        'sharing.public_knowledge',
+        resource_type='knowledge',
     )
 
     knowledge = await Knowledges.insert_new_knowledge(
@@ -951,7 +970,7 @@ async def create_external_knowledge_source(
         user.id,
         user.role,
         form_data.access_grants,
-        'sharing.public_knowledge',
+        resource_type='knowledge',
     )
 
     connections = await _get_external_connections()
@@ -1021,14 +1040,6 @@ async def update_external_knowledge_source(
     )
     if not test_result.get('documents'):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Test query returned no results.')
-
-    form_data.access_grants = await filter_allowed_access_grants(
-        await Config.get('user.permissions'),
-        user.id,
-        user.role,
-        form_data.access_grants,
-        'sharing.public_knowledge',
-    )
 
     connections[idx] = connection
     await _set_external_connections(connections)
@@ -1158,14 +1169,6 @@ async def update_knowledge_by_id(
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    form_data.access_grants = await filter_allowed_access_grants(
-        await Config.get('user.permissions'),
-        user.id,
-        user.role,
-        form_data.access_grants,
-        'sharing.public_knowledge',
-    )
-
     knowledge = await Knowledges.update_knowledge_by_id(id=id, form_data=form_data)
     if knowledge:
         # Re-embed knowledge base for semantic search
@@ -1177,7 +1180,7 @@ async def update_knowledge_by_id(
         )
         response = KnowledgeFilesResponse(
             **knowledge.model_dump(),
-            files=await Knowledges.get_file_metadatas_by_id(knowledge.id),
+            files=[],
         )
         await publish_event(
             request,
@@ -1234,19 +1237,19 @@ async def update_knowledge_access_by_id(
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    form_data.access_grants = await filter_allowed_access_grants(
+    form_data.access_grants = await validate_access_grants(
         await Config.get('user.permissions'),
         user.id,
         user.role,
         form_data.access_grants,
-        'sharing.public_knowledge',
+        resource_type='knowledge',
     )
 
     knowledge.access_grants = await AccessGrants.set_access_grants('knowledge', id, form_data.access_grants, db=db)
 
     response = KnowledgeFilesResponse(
         **knowledge.model_dump(),
-        files=await Knowledges.get_file_metadatas_by_id(id, db=db),
+        files=[],
     )
     await publish_event(
         request,
@@ -1437,6 +1440,8 @@ async def add_file_to_knowledge_by_id(
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
+    await _verify_directory_in_knowledge(id, form_data.directory_id, db, detail='Target directory not found.')
+
     file = await Files.get_file_by_id(form_data.file_id, db=db)
     if not file:
         raise HTTPException(
@@ -1484,7 +1489,7 @@ async def add_file_to_knowledge_by_id(
     if knowledge:
         response = KnowledgeFilesResponse(
             **knowledge.model_dump(),
-            files=await Knowledges.get_file_metadatas_by_id(knowledge.id, db=db),
+            files=await Files.get_file_metadatas_by_ids([form_data.file_id], db=db),
         )
         await publish_event(
             request,
@@ -1568,7 +1573,7 @@ async def update_file_from_knowledge_by_id(
     if knowledge:
         response = KnowledgeFilesResponse(
             **knowledge.model_dump(),
-            files=await Knowledges.get_file_metadatas_by_id(knowledge.id, db=db),
+            files=await Files.get_file_metadatas_by_ids([form_data.file_id], db=db),
         )
         await publish_event(
             request,
@@ -1642,13 +1647,9 @@ async def remove_file_from_knowledge_by_id(
 
     # Remove content from the vector database
     try:
-        await ASYNC_VECTOR_DB_CLIENT.delete(
-            collection_name=knowledge.id, filter={'file_id': form_data.file_id}
-        )  # Remove by file_id first
-
-        await ASYNC_VECTOR_DB_CLIENT.delete(
-            collection_name=knowledge.id, filter={'hash': file.hash}
-        )  # Remove by hash as well in case of duplicates
+        await ASYNC_VECTOR_DB_CLIENT.delete(collection_name=knowledge.id, filter={'file_id': form_data.file_id})
+        if file.hash:
+            await ASYNC_VECTOR_DB_CLIENT.delete(collection_name=knowledge.id, filter={'hash': file.hash})
     except Exception as e:
         log.debug('This was most likely caused by bypassing embedding processing')
         log.debug(e)
@@ -1661,7 +1662,7 @@ async def remove_file_from_knowledge_by_id(
     if knowledge:
         response = KnowledgeFilesResponse(
             **knowledge.model_dump(),
-            files=await Knowledges.get_file_metadatas_by_id(knowledge.id, db=db),
+            files=[],
         )
         await publish_event(
             request,
@@ -1731,7 +1732,7 @@ async def delete_knowledge_by_id(
                 log.info('Updating model %s to remove knowledge base %s', model.id, id)
                 model.meta.knowledge = updated_knowledge
                 model_form = ModelForm(**model.model_dump())
-                await Models.update_model_by_id(model.id, model_form, db=db)
+                await Models.update_model_by_id(model.id, model_form, db=db, user_id=user.id)
 
     # Clean up vector DB
     if is_external_knowledge(knowledge):
@@ -1870,7 +1871,6 @@ async def sync_knowledge_diff(
     await _verify_knowledge_write_access(id, user, db)
 
     # ── Index existing state ──
-    knowledge_files = await Knowledges.get_files_with_directory_ids(id, db=db)
     existing_directories = await Knowledges.get_all_directories(id, db=db)
 
     # Build directory path lookups
@@ -1888,6 +1888,18 @@ async def sync_knowledge_diff(
         full_path = '/'.join(segments)
         directory_path_by_id[directory.id] = full_path
         directory_id_by_path[full_path] = directory.id
+
+    # Retry uploads left pending by a restart after an hour.
+    pending_files = {
+        (
+            directory_path_by_id.get(file.meta.data.get('directory_id'), ''),
+            file.filename,
+            file.meta.model_dump().get('file_hash'),
+        )
+        for file in await Files.get_pending_files_for_knowledge(id, db=db)
+        if file.created_at >= int(time.time()) - 3600
+    }
+    knowledge_files = await Knowledges.get_files_with_directory_ids(id, db=db)
 
     # Index existing files by (path, filename) → {file_id, checksum}
     indexed_files: dict[tuple[str, str], dict] = {}
@@ -1909,6 +1921,10 @@ async def sync_knowledge_diff(
     for entry in form_data.manifest:
         key = (entry.path, entry.filename)
         manifest_keys.add(key)
+
+        if key not in indexed_files and (*key, entry.checksum) in pending_files:
+            unmodified_count += 1
+            continue
 
         if key not in indexed_files:
             added.append({'filename': entry.filename, 'path': entry.path})
@@ -1988,7 +2004,8 @@ async def sync_knowledge_cleanup(
 
         try:
             await ASYNC_VECTOR_DB_CLIENT.delete(collection_name=id, filter={'file_id': file_id})
-            await ASYNC_VECTOR_DB_CLIENT.delete(collection_name=id, filter={'hash': file.hash})
+            if file.hash:
+                await ASYNC_VECTOR_DB_CLIENT.delete(collection_name=id, filter={'hash': file.hash})
         except Exception:
             pass
 
@@ -2052,6 +2069,9 @@ async def add_files_to_knowledge_batch(
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
+    for directory_id in {form.directory_id for form in form_data if form.directory_id}:
+        await _verify_directory_in_knowledge(id, directory_id, db, detail='Target directory not found.')
+
     # Batch-fetch all files to avoid N+1 queries
     log.info('files/batch/add - %s files', len(form_data))
     file_ids = [form.file_id for form in form_data]
@@ -2085,7 +2105,7 @@ async def add_files_to_knowledge_batch(
     if not new_entries:
         return KnowledgeFilesResponse(
             **knowledge.model_dump(),
-            files=await Knowledges.get_file_metadatas_by_id(knowledge.id, db=db),
+            files=[],
         )
 
     # Narrow the file list to only new files for processing
@@ -2121,7 +2141,7 @@ async def add_files_to_knowledge_batch(
         error_details = [f'{err.file_id}: {err.error}' for err in result.errors]
         return KnowledgeFilesResponse(
             **knowledge.model_dump(),
-            files=await Knowledges.get_file_metadatas_by_id(knowledge.id, db=db),
+            files=await Files.get_file_metadatas_by_ids(successful_file_ids, db=db),
             warnings={
                 'message': 'Some files failed to process',
                 'errors': error_details,
@@ -2130,7 +2150,7 @@ async def add_files_to_knowledge_batch(
 
     return KnowledgeFilesResponse(
         **knowledge.model_dump(),
-        files=await Knowledges.get_file_metadatas_by_id(knowledge.id, db=db),
+        files=await Files.get_file_metadatas_by_ids(successful_file_ids, db=db),
     )
 
 
@@ -2240,6 +2260,8 @@ async def create_knowledge_directory(
 ):
     await _verify_knowledge_write_access(id, user, db)
 
+    await _verify_directory_in_knowledge(id, form_data.parent_id, db, detail='Parent directory not found.')
+
     directory = await Knowledges.create_directory(
         knowledge_id=id,
         name=form_data.name,
@@ -2272,14 +2294,11 @@ async def update_knowledge_directory(
     db: AsyncSession = Depends(get_async_session),
 ):
     await _verify_knowledge_write_access(id, user, db)
+    await _verify_directory_in_knowledge(id, dir_id, db)
 
-    # Verify directory belongs to this knowledge base
-    directory = await Knowledges.get_directory_by_id(dir_id, db=db)
-    if not directory or directory.knowledge_id != id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.NOT_FOUND,
-        )
+    # '__unset__' leaves the parent alone, None moves the directory to the root
+    if form_data.parent_id not in (None, '__unset__'):
+        await _verify_directory_in_knowledge(id, form_data.parent_id, db, detail='Parent directory not found.')
 
     result = await Knowledges.update_directory(
         directory_id=dir_id,
@@ -2312,14 +2331,10 @@ async def delete_knowledge_directory(
     db: AsyncSession = Depends(get_async_session),
 ):
     await _verify_knowledge_write_access(id, user, db)
+    await _verify_directory_in_knowledge(id, dir_id, db)
 
-    # Verify directory belongs to this knowledge base
-    directory = await Knowledges.get_directory_by_id(dir_id, db=db)
-    if not directory or directory.knowledge_id != id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.NOT_FOUND,
-        )
+    # Collect before delete_directory drops the KnowledgeFile rows
+    files = [] if move_files else await Knowledges.get_files_by_id_and_directory_id(id, dir_id, db=db)
 
     success = await Knowledges.delete_directory(
         directory_id=dir_id,
@@ -2331,6 +2346,23 @@ async def delete_knowledge_directory(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail='Failed to delete directory.',
         )
+
+    for file in files:
+        try:
+            await ASYNC_VECTOR_DB_CLIENT.delete(collection_name=id, filter={'file_id': file.id})
+            if file.hash:
+                await ASYNC_VECTOR_DB_CLIENT.delete(collection_name=id, filter={'hash': file.hash})
+        except Exception as e:
+            log.debug('This was most likely caused by bypassing embedding processing')
+            log.debug(e)
+
+        if (
+            not ENABLE_KNOWLEDGE_FILE_RETENTION
+            and not await Knowledges.get_knowledges_by_file_id(file.id, db=db)
+            and (file.user_id == user.id or user.role == 'admin')
+        ):
+            await delete_file_resource(file, db)
+
     await publish_event(
         request,
         EVENTS.KNOWLEDGE_DIRECTORY_DELETED,
@@ -2338,7 +2370,7 @@ async def delete_knowledge_directory(
         subject_id=dir_id,
         data={'knowledge_id': id, 'move_files': move_files},
     )
-    return {'status': True}
+    return {'status': True, 'file_ids': [file.id for file in files]}
 
 
 @router.post('/{id}/file/move')
@@ -2358,14 +2390,7 @@ async def move_file_in_knowledge(
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
 
-    # If target directory is set, verify it belongs to this knowledge base
-    if form_data.directory_id:
-        directory = await Knowledges.get_directory_by_id(form_data.directory_id, db=db)
-        if not directory or directory.knowledge_id != id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Target directory not found.',
-            )
+    await _verify_directory_in_knowledge(id, form_data.directory_id, db, detail='Target directory not found.')
 
     success = await Knowledges.move_file_to_directory(
         knowledge_id=id,

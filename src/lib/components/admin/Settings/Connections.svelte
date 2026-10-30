@@ -173,12 +173,14 @@
 />
 
 <form class="flex h-full flex-col justify-between text-sm" on:submit|preventDefault={submitHandler}>
-	<h2 class="text-sm font-medium text-gray-900 dark:text-white mb-4">{$i18n.t('Connections')}</h2>
+	<h2 class="text-sm font-medium text-gray-900 dark:text-white mb-4">
+		{$i18n.t('settings.admin.connections.title')}
+	</h2>
 
 	<div class="flex-1 min-h-0 overflow-y-auto scrollbar-hover pr-1.5">
 		{#if ENABLE_OPENAI_API !== null && connectionsConfig !== null}
 			<AdminSettingSection first>
-				<AdminSettingRow label={$i18n.t('OpenAI API')} let:labelId>
+				<AdminSettingRow label={$i18n.t('settings.admin.connections.openaiApi.label')} let:labelId>
 					<Switch
 						bind:state={ENABLE_OPENAI_API}
 						on:change={async () => {
@@ -192,11 +194,12 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between gap-4">
 							<div class="text-xs text-gray-600 dark:text-gray-400">
-								{$i18n.t('Manage OpenAI API Connections')}
+								{$i18n.t('settings.admin.connections.manageOpenaiApiConnections.label')}
 							</div>
 
-							<Tooltip content={$i18n.t(`Add Connection`)}>
+							<Tooltip content={$i18n.t('settings.admin.connections.addConnection.label')}>
 								<button
+									aria-label={$i18n.t('settings.admin.connections.addConnection.label')}
 									class="flex size-6 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/5 hover:text-gray-700 dark:text-gray-600 dark:hover:bg-white/5 dark:hover:text-gray-300"
 									on:click={() => {
 										showAddOpenAIConnectionModal = true;
@@ -238,12 +241,12 @@
 				{/if}
 			</AdminSettingSection>
 
-			<AdminSettingSection title={$i18n.t('User Connections')}>
+			<AdminSettingSection
+				title={$i18n.t('settings.admin.connections.sections.userConnections.title')}
+			>
 				<AdminSettingRow
-					label={$i18n.t('Direct Connections')}
-					description={$i18n.t(
-						'Direct Connections allow users to connect to their own OpenAI compatible API endpoints.'
-					)}
+					label={$i18n.t('settings.admin.connections.directConnections.label')}
+					description={$i18n.t('settings.admin.connections.directConnections.description')}
 					let:labelId
 				>
 					<Switch
@@ -256,21 +259,19 @@
 				</AdminSettingRow>
 
 				<AdminSettingRow
-					label={$i18n.t('Cache Base Model List')}
-					description={$i18n.t(
-						'Base Model List Cache speeds up access by fetching base models only at startup or on settings save—faster, but may not show recent base model changes.'
-					)}
+					label={$i18n.t('settings.admin.connections.cacheBaseModelList.label')}
+					description={$i18n.t('settings.admin.connections.cacheBaseModelList.description')}
 					let:labelId
 				>
 					<div class="flex items-center gap-1.5">
 						{#if connectionsConfig.ENABLE_BASE_MODELS_CACHE}
-							<Tooltip content={$i18n.t('Refresh')}>
+							<Tooltip content={$i18n.t('settings.admin.connections.refreshModels.label')}>
 								<button
 									class="flex size-6 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/5 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-600 dark:hover:bg-white/5 dark:hover:text-gray-300"
 									type="button"
 									disabled={modelListRefreshing}
 									on:click={refreshModelListHandler}
-									aria-label={$i18n.t('Refresh')}
+									aria-label={$i18n.t('settings.admin.connections.refreshModels.label')}
 								>
 									{#if modelListRefreshing}
 										<Spinner className="size-3.5" />
@@ -302,7 +303,7 @@
 
 	<div class="flex justify-end pt-6 text-sm font-normal">
 		<button
-			class="px-3.5 py-1.5 text-sm font-normal bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full"
+			class="flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-2.5 text-xs font-normal text-white transition hover:bg-black disabled:opacity-60 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
 			type="submit"
 		>
 			{$i18n.t('Save')}

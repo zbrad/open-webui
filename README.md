@@ -14,7 +14,7 @@ Open WebUI is **a home for AI**, a self-hosted AI platform that's **[extensible]
 
 Passionate about open-source AI? [Join our team →](https://careers.openwebui.com/)
 
-![Open WebUI Demo](./demo.png)
+![Open WebUI Demo](https://community.s3.openwebui.com/uploads/users/6d849fdd-b93f-411e-a611-eb25c73f1154/2026/10/25aebd3e-1d1c-4177-98b3-317ce60f75e9.gif)
 
 > [!TIP]  
 > **Looking for an [Enterprise Plan](https://docs.openwebui.com/enterprise)?** – **[Speak with Our Sales Team Today!](https://docs.openwebui.com/enterprise)**
@@ -32,6 +32,8 @@ For more information, be sure to check out our [Open WebUI Documentation](https:
 - 🧩 **Plugin Support**: Extend Open WebUI with **Filters**, **Actions**, **Pipes**, **Tools**, and **Skills**. Connect external services through **MCP**, **MCPO**, and **OpenAPI tool servers**. Build custom integrations, rate limits, approval flows, data connections, and more.
 
 - 🤖 **Models & Agents**: Wrap any base model with custom instructions, tools, and knowledge to build specialized agents. Supports dynamic variables, per-user/group access control, and community preset imports via [Open WebUI Community](https://openwebui.com/).
+
+- ⚡ **Agentic Execution with [Open Terminal](https://github.com/open-webui/open-terminal)**: Give your agents a terminal and filesystem to carry out multi-step tasks. Let them analyze data, run scripts, fix errors, and produce files directly in chat. Scale to teams with **[Terminals (Enterprise)](https://github.com/open-webui/terminals)** for per-user isolated environments, resource limits, and automatic lifecycle management.
 
 - 📝 **Notes**: A dedicated workspace for content outside conversations. Draft with a rich editor, use AI to rewrite selected text, and attach notes to any chat for full-context injection.
 

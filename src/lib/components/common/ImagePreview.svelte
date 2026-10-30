@@ -6,6 +6,8 @@
 	const { saveAs } = fileSaver;
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
+	import { settings } from '$lib/stores';
+	import { matchKeybinding, Shortcut } from '$lib/shortcuts';
 	import PanzoomContainer from '$lib/components/common/PanzoomContainer.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 
@@ -18,7 +20,10 @@
 	let previewElement = null;
 
 	const handleKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Escape') {
+		if (
+			event.key === 'Escape' ||
+			($settings?.keyboardShortcuts !== false && matchKeybinding(event) === Shortcut.CLOSE_MODAL)
+		) {
 			console.log('Escape');
 			show = false;
 		}
@@ -57,6 +62,7 @@
 		<div class=" absolute left-0 w-full flex justify-between select-none z-20">
 			<div>
 				<button
+					aria-label={$i18n.t('Close')}
 					class=" p-5"
 					on:pointerdown={(e) => {
 						e.stopImmediatePropagation();

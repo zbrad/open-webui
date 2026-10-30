@@ -15,6 +15,8 @@ dependencies = [
     "python-socketio",
     "orjson",
     "cryptography",
+    "pyotp",
+    "qrcode",
     "bcrypt",
     "argon2-cffi",
     "PyJWT[crypto]",
@@ -24,13 +26,13 @@ dependencies = [
     "requests",
     "aiohttp!=3.13.3", # do not update to 3.13.3 - broken
     "aiodns<4", # keep below 4.x: pulls pycares 5 (c-ares 1.34.6) which breaks DNS on some hosts (#28013, #28215); opt-in via AIOHTTP_CLIENT_ASYNC_DNS_RESOLVER
-    "async-timeout",
     "aiocache",
     "aiofiles",
     "starlette-compress",
     "Brotli",
     "brotlicffi",
     "httpx[socks,http2,zstd,cli,brotli]",
+    "httpx2",
     "starsessions[redis]",
     "python-mimeparse",
 
@@ -42,25 +44,22 @@ dependencies = [
     "pycrdt",
     "redis",
     "hiredis",
-    # "valkey-glide-sync==2.3.1",  # optional: install manually if VECTOR_DB=valkey
+    # "valkey-glide-sync==2.5.2",  # optional: install manually if VECTOR_DB=valkey
 
     "pytz",
-    "APScheduler",
-    "RestrictedPython",
 
     "loguru",
     "asgiref",
 
     "tiktoken",
     "regex",
-    "mcp<2", # 2.x renamed streamablehttp_client -> streamable_http_client and changed its signature (httpx_client_factory -> a prebuilt httpx2.AsyncClient); utils/mcp/client.py isn't ported to it yet
+    "google-re2",
+    "mcp>=2", # utils/mcp/client.py uses the 2.x streamable_http_client + httpx2 API
 
     "openai",
     "anthropic",
-    "google-genai",
 
-    "langchain",
-    "langchain-community",
+    "langchain-core",
     "langchain-classic",
     "langchain-text-splitters",
 
@@ -79,13 +78,10 @@ dependencies = [
     "ftfy",
     "chardet",
     "pypdf",
-    "fpdf2",
-    "pymdown-extensions",
     "docx2txt",
     "python-docx",
     "python-pptx",
     "msoffcrypto-tool",
-    "nltk",
     "Markdown",
     "beautifulsoup4",
     "lxml",
@@ -110,15 +106,10 @@ dependencies = [
 
     "black",
     "youtube-transcript-api",
-    "pytube",
 
     "pydub",
     "audioop-lts; python_version >= '3.13'", # stdlib audioop was removed in 3.13 (PEP 594); pydub needs this backport
     "ddgs",
-
-    "google-api-python-client",
-    "google-auth-httplib2",
-    "google-auth-oauthlib",
 
     "googleapis-common-protos",
     "google-cloud-storage",
@@ -150,13 +141,13 @@ mariadb = [
 ]
 unstructured = [
     "unstructured",
+    "preshed", # keep pinned: transitive via unstructured -> spaCy; 3.0.14 breaks HTML extraction (web loader)
 ]
 
 all = [
-    "pymongo",
     "psycopg2-binary",
     "pgvector",
-    "playwright", # Caution: keep in sync with docker-compose.playwright.yaml's pinned image/CLI version
+    "playwright", # Caution: version must match docker-compose.playwright.yaml - Update the docker-compose.yaml if necessary
     "elasticsearch",
 
     "qdrant-client",
@@ -169,6 +160,7 @@ all = [
 
     "azure-search-documents",
     "unstructured",
+    "preshed", # keep pinned: transitive via unstructured -> spaCy; 3.0.14 breaks HTML extraction (web loader)
 ]
 
 [project.scripts]
